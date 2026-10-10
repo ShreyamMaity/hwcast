@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup with an agent</title>
+<meta name="description" content="Let an AI coding agent (Claude Code, Codex, Antigravity, Grok Build or any other) install and configure hwcast on your Windows PC.">
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --line: #e3e2de; --text: #1d1d1b; --muted: #66645e;
+    --accent: #2f6fde; --accent-text: #ffffff; --code: #f1f0ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --card: #1e1e1d; --line: #333230; --text: #ecebe8; --muted: #a29f98;
+      --accent: #6b9bf0; --accent-text: #0e1420; --code: #282826;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 48px 16px;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.3px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; }
+  .tabs button {
+    background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin: 16px 0; }
+  .card h2 { font-size: 17px; margin: 0 0 6px; }
+  .card p { font-size: 14px; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  a.btn {
+    display: inline-block; background: var(--accent); color: var(--accent-text); text-decoration: none;
+    font-weight: 600; padding: 10px 16px; border-radius: 10px; font-size: 15px;
+  }
+  a.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  pre {
+    background: var(--code); border-radius: 10px; padding: 12px 14px; margin: 0 0 10px;
+    white-space: pre-wrap; word-break: break-word; font: 13px/1.5 ui-monospace, Consolas, monospace;
+  }
+  button.copy {
+    background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .small { font-size: 13px; }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Setup hwcast with an agent</h1>
+  <p>Pick the coding agent you use. It opens with a prepared prompt; you press Enter. The agent checks your hardware, asks you a few questions (port, where you will view the dashboard, sensor driver, install folder) and only then installs hwcast. You approve every change, and Windows asks for admin permission when needed.</p>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="claude" aria-selected="true">Claude Code</button>
+    <button role="tab" data-tab="codex" aria-selected="false">Codex</button>
+    <button role="tab" data-tab="agy" aria-selected="false">Antigravity</button>
+    <button role="tab" data-tab="grok" aria-selected="false">Grok Build</button>
+    <button role="tab" data-tab="other" aria-selected="false">Any other agent</button>
+  </div>
+
+  <section class="card" data-panel="claude">
+    <h2>Claude Code</h2>
+    <p>One click opens Claude with the prompt filled in. The terminal button works once you have used Claude Code in a terminal at least once.</p>
+    <div class="row">
+      <a class="btn" id="claudeDesktop" href="#">Open in Claude desktop</a>
+      <a class="btn ghost" id="claudeCli" href="#">Open in Claude Code (terminal)</a>
+    </div>
+    <p>Or run this in PowerShell:</p>
+    <pre id="cmdClaude"></pre>
+    <button class="copy" data-target="cmdClaude">Copy command</button>
+  </section>
+
+  <section class="card" data-panel="codex" hidden>
+    <h2>OpenAI Codex CLI</h2>
+    <p>Run this in PowerShell. Codex starts with the prompt.</p>
+    <pre id="cmdCodex"></pre>
+    <button class="copy" data-target="cmdCodex">Copy command</button>
+  </section>
+
+  <section class="card" data-panel="agy" hidden>
+    <h2>Google Antigravity CLI</h2>
+    <p>Run this in PowerShell. <code>-i</code> starts an interactive session with the prompt.</p>
+    <pre id="cmdAgy"></pre>
+    <button class="copy" data-target="cmdAgy">Copy command</button>
+  </section>
+
+  <section class="card" data-panel="grok" hidden>
+    <h2>xAI Grok Build</h2>
+    <p>Start <code>grok</code> in PowerShell, then paste this prompt:</p>
+    <pre class="prompt"></pre>
+    <button class="copy" data-prompt>Copy prompt</button>
+  </section>
+
+  <section class="card" data-panel="other" hidden>
+    <h2>Any other agent</h2>
+    <p>Gemini CLI, GitHub Copilot, Cursor, Windsurf, OpenCode or anything that can run PowerShell commands on your PC: paste this prompt into it.</p>
+    <pre class="prompt"></pre>
+    <button class="copy" data-prompt>Copy prompt</button>
+  </section>
+
+  <p class="small">What the agent follows: <a href="https://github.com/ShreyamMaity/hwcast/blob/main/docs/agent-setup.md">docs/agent-setup.md</a>. Prefer doing it by hand? Download <code>hwcast.exe</code> from <a href="https://github.com/ShreyamMaity/hwcast/releases/latest">the latest release</a> and double-click it.</p>
+</main>
+<script>
+  const GUIDE = 'https://raw.githubusercontent.com/ShreyamMaity/hwcast/main/docs/agent-setup.md';
+  const PROMPT = 'Set up hwcast on this Windows PC for me. hwcast is a small open-source Windows service (one Rust exe) that serves a live hardware dashboard (CPU, NVIDIA GPUs, RAM, page file, motherboard temperatures, fans, top apps) to any browser on my local network. Repo: https://github.com/ShreyamMaity/hwcast. First read the setup guide at ' + GUIDE + ' (if you cannot browse, download it in PowerShell with: irm ' + GUIDE + ') and follow it exactly: check my system first, ask me the setup questions, and wait for my answers before changing anything.';
+  const q = encodeURIComponent(PROMPT);
+  const $ = (id) => document.getElementById(id);
+  $('claudeDesktop').href = 'claude://code/new?q=' + q;
+  $('claudeCli').href = 'claude-cli://open?q=' + q;
+  $('cmdClaude').textContent = 'claude "' + PROMPT + '"';
+  $('cmdCodex').textContent = 'codex "' + PROMPT + '"';
+  $('cmdAgy').textContent = 'agy -i "' + PROMPT + '"';
+  document.querySelectorAll('pre.prompt').forEach(p => { p.textContent = PROMPT; });
+
+  const tabs = document.querySelectorAll('.tabs button');
+  function show(name) {
+    tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== name; });
+    try { history.replaceState(null, '', '#' + name); } catch (_) {}
+  }
+  tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
+  const start = location.hash.slice(1);
+  if ([...tabs].some(t => t.dataset.tab === start)) show(start);
+
+  document.querySelectorAll('button.copy').forEach(b => b.addEventListener('click', async () => {
+    const text = b.hasAttribute('data-prompt') ? PROMPT : $(b.dataset.target).textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      const t = b.textContent; b.textContent = 'Copied'; setTimeout(() => { b.textContent = t; }, 1500);
+    } catch (_) {}
+  }));
+</script>
+</body>
+</html>

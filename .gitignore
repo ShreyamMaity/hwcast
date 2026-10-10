@@ -1,0 +1,6 @@
+/target/
+/dist/
+/bin/
+/tools/
+/vendor/
+config.json
