@@ -6,11 +6,16 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/network)
-[![Setup with an agent](https://img.shields.io/badge/Setup%20with-an%20agent-2F6FDE)](https://shreyammaity.github.io/hwcast/setup/)
+[![Live demo](https://img.shields.io/badge/Live-demo-3CCF7D)](https://shreyammaity.github.io/hwcast/demo/)
+[![Setup with an agent](https://img.shields.io/badge/Setup%20with-an%20agent-2F6FDE?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxyZWN0IHg9IjExIiB5PSIxLjUiIHdpZHRoPSIyIiBoZWlnaHQ9IjMuNSIgcng9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEuOCIgcj0iMS41Ii8%2BPHJlY3QgeD0iMy41IiB5PSI2IiB3aWR0aD0iMTciIGhlaWdodD0iMTMiIHJ4PSI0Ii8%2BPHJlY3QgeD0iMC41IiB5PSIxMCIgd2lkdGg9IjIuNSIgaGVpZ2h0PSI1IiByeD0iMS4yIi8%2BPHJlY3QgeD0iMjEiIHk9IjEwIiB3aWR0aD0iMi41IiBoZWlnaHQ9IjUiIHJ4PSIxLjIiLz48Y2lyY2xlIGN4PSI4LjUiIGN5PSIxMS41IiByPSIyIiBmaWxsPSIjMkY2RkRFIi8%2BPGNpcmNsZSBjeD0iMTUuNSIgY3k9IjExLjUiIHI9IjIiIGZpbGw9IiMyRjZGREUiLz48cmVjdCB4PSI4IiB5PSIxNS4zIiB3aWR0aD0iOCIgaGVpZ2h0PSIxLjYiIHJ4PSIwLjgiIGZpbGw9IiMyRjZGREUiLz48L3N2Zz4%3D)](https://shreyammaity.github.io/hwcast/setup/)
 
 A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second.
 
 Nothing to install on the viewing device. Open the address in any browser on your local network (a laptop, a spare monitor, a tablet, a phone) and leave it open.
+
+**[Try the live demo](https://shreyammaity.github.io/hwcast/demo/)**: the real dashboard running on made-up data, right in your browser.
+
+![hwcast live dashboard at iPad mini size (demo data)](docs/demo.gif)
 
 ## Features
 
@@ -57,11 +62,38 @@ After installing, `hwcast` works in any new terminal.
 
 The installer adds a **hwcast** entry to the Start menu that opens the dashboard, and an entry in **Settings > Apps** for uninstalling.
 
+## Use case: a tablet as a dedicated stats screen
+
+An old iPad, an Android tablet or a spare phone makes a great always-on hardware monitor next to your desk: glance at temperatures and GPU load during a game, a render or a training run without alt-tabbing to Task Manager.
+
+Want to see how it looks first? Open the [live demo](https://shreyammaity.github.io/hwcast/demo/) on the tablet.
+
+1. On the tablet, open the address from `hwcast status`, for example `http://192.168.1.20:8340`.
+2. Add it to the home screen. On iPad or iPhone: Share, then **Add to Home Screen**. On Android: browser menu, then **Add to Home screen** or **Install app**. It then opens full screen, without browser bars.
+3. Keep the screen on. The dashboard asks the browser to keep the screen awake while it is open (tap it once if the screen still dims). On iPad you can also set **Settings > Display & Brightness > Auto-Lock > Never**, or use **Guided Access** to lock the tablet to the dashboard.
+4. Leave it on its charger. The dashboard reconnects by itself if the PC sleeps or restarts.
+
+The layout adapts from a phone in portrait up to a tablet in landscape. Two GPUs, CPU and memory fit on one iPad mini screen in landscape; in portrait the cards stack and scroll.
+
+<img src="docs/screenshot-portrait.png" width="320" alt="hwcast in portrait on an iPad mini (demo data)">
+
 ## Viewing it away from home
 
-hwcast only answers your local network by default. To see it from elsewhere, use whatever you already use to reach your home network:
+hwcast only answers your local network by default. To see it from elsewhere, use whatever you already use to reach your home network.
 
-- **A mesh VPN** such as [Tailscale](https://tailscale.com), ZeroTier or WireGuard. Tailscale works out of the box: its `100.x.y.z` addresses are allowed by default, and `hwcast status` prints the right address.
+### Optional: Tailscale
+
+[Tailscale](https://tailscale.com) is the easiest way to keep the dashboard working on your phone or tablet anywhere, with nothing exposed to the internet. hwcast already allows Tailscale addresses, so there is nothing to configure on the hwcast side.
+
+1. Install Tailscale on the PC and on the viewing device, and sign in to the same account on both.
+2. Run `hwcast status` on the PC. It prints a `100.x.y.z` address next to "Tailscale / VPN".
+3. Open `http://100.x.y.z:8340` on the device. With MagicDNS on, `http://<your-pc-name>:8340` works too.
+
+The connection is encrypted by Tailscale end to end. Anyone you share your tailnet with can see the dashboard, so use Tailscale ACLs if that matters.
+
+### Other options
+
+- **Another mesh VPN** such as ZeroTier or WireGuard. Addresses in `100.64.0.0/10` are allowed by default; for other ranges, add them to `allow` in `config.json`.
 - **A reverse proxy** (Caddy, nginx, Traefik) in front of `http://<PC>:8340`. Put HTTPS and a login in front of it if it faces the internet, since hwcast has no login of its own.
 
 ## Footprint
@@ -166,6 +198,23 @@ cargo build --release                        # target\release\hwcast.exe
 ```
 
 `scripts\package.ps1` builds the release assets (`hwcast.exe`, a zip with the licenses, and `SHA256SUMS.txt`).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+Signing starts with the first release built after the project's SignPath Foundation approval; earlier releases are unsigned. Signed releases show "SignPath Foundation" as the publisher.
+
+- Every release is built from this repository's source by [GitHub Actions](.github/workflows/release.yml) on GitHub-hosted runners, and only those builds are submitted for signing.
+- Each signing request is approved manually by an approver.
+- Team roles:
+  - Committers and reviewers: [Shreyam Maity](https://github.com/ShreyamMaity)
+  - Approvers: [Shreyam Maity](https://github.com/ShreyamMaity)
+- Contributions from people outside the team are reviewed before they are merged.
+
+## Privacy
+
+hwcast does not send any information to other networked systems. It serves the dashboard only to devices that open it (this PC, your local network and VPN addresses by default) and has no telemetry, analytics or update checks. The only outbound connection is optional and happens during installation, when you agree to install the PawnIO driver through winget.
 
 ## Credits
 

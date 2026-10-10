@@ -86,8 +86,14 @@ pub fn double_click() {
     }
     println!("hwcast {}\n", env!("CARGO_PKG_VERSION"));
     println!("A live hardware dashboard for this PC: CPU, GPUs, memory, temperatures and fans,");
-    println!("viewable from any browser on your local network.\n");
-    println!("It installs as a small background service (about 0% CPU when nobody is watching).");
+    println!("viewable from any browser on your local network. It sends nothing to the internet.\n");
+    println!("Installing makes these changes (all undone by `hwcast uninstall` or Settings > Apps):");
+    println!("  - copies hwcast.exe to {}", default_dir().display());
+    println!("  - registers the 'hwcast' Windows service (runs as LocalSystem to read sensors, starts at boot)");
+    println!("  - adds a Windows Firewall rule so devices on your local network and VPN can open port {DEFAULT_PORT}");
+    println!("  - adds hwcast to the system PATH, a Start menu entry and a Settings > Apps entry");
+    println!("  - optionally installs the PawnIO sensor driver (you are asked separately)");
+    println!("Windows will ask for administrator permission once.\n");
     if !ask_yes("Install hwcast on this PC now?") {
         return;
     }

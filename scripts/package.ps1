@@ -2,24 +2,32 @@
 #   hwcast.exe                          (the whole app: double-click to install)
 #   hwcast-<version>-windows-x64.zip    (exe + README + licenses)
 #   SHA256SUMS.txt
+# -Exe <path> packages an existing exe (for example the signed one from CI) instead of building.
+param([string]$Exe)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 Push-Location $root
 try {
-  if (-not (Test-Path 'vendor\mods\LpcIO.bin')) { & "$PSScriptRoot\fetch-modules.ps1" }
-  # Keep build-machine paths (user name, cargo cache, checkout folder) out of the release exe.
-  $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE '.cargo' }
-  $rustupHome = if ($env:RUSTUP_HOME) { $env:RUSTUP_HOME } else { Join-Path $env:USERPROFILE '.rustup' }
-  $env:RUSTFLAGS = "--remap-path-prefix=$cargoHome=cargo --remap-path-prefix=$rustupHome=rustup --remap-path-prefix=$root=hwcast --remap-path-prefix=$env:USERPROFILE=user"
-  cargo build --release
-  if ($LASTEXITCODE) { throw 'cargo build failed' }
+  # The live demo on GitHub Pages is the same dashboard page in demo mode.
+  New-Item -ItemType Directory -Force 'docs\demo' | Out-Null
+  Copy-Item 'web\index.html' 'docs\demo\index.html' -Force
+
+  if ($Exe) {
+    $Exe = (Resolve-Path $Exe).Path
+  } else {
+    & "$PSScriptRoot\build.ps1"
+    $Exe = Join-Path $root 'target\release\hwcast.exe'
+  }
   $version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.+)"').Matches[0].Groups[1].Value
+  $exeVersion = (Get-Item $Exe).VersionInfo.ProductVersion
+  if ($exeVersion -ne $version) { throw "hwcast.exe is version '$exeVersion' but Cargo.toml says '$version'" }
+
   $name = "hwcast-$version-windows-x64"
   Remove-Item dist -Recurse -Force -ErrorAction SilentlyContinue
   $stage = Join-Path 'dist' $name
   New-Item -ItemType Directory -Force "$stage\LICENSES" | Out-Null
-  Copy-Item 'target\release\hwcast.exe' 'dist\hwcast.exe'
-  Copy-Item 'target\release\hwcast.exe', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'config.example.json' $stage
+  Copy-Item $Exe 'dist\hwcast.exe'
+  Copy-Item $Exe, 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'config.example.json' $stage
   Copy-Item 'LICENSES\*' "$stage\LICENSES"
   Compress-Archive -Path "$stage\*" -DestinationPath "dist\$name.zip"
   Remove-Item $stage -Recurse -Force

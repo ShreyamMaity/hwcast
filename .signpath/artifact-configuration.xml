@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for hwcast (slug: hwcast-exe).
+  Paste this into the SignPath project once it is approved. The GitHub artifact
+  "hwcast-unsigned" is a zip containing hwcast.exe; the product name is enforced
+  so only genuine hwcast builds can be signed. Add the product version restriction
+  in the format SignPath documents for your project when configuring it.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="hwcast.exe" product-name="hwcast">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="hwcast">
+<meta name="theme-color" content="#0b0d10">
+<link rel="manifest" href="/manifest.json">
+<title>hwcast</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --card: #14181d;
+    --line: #232a32;
+    --text: #e8ecf0;
+    --muted: #8a96a3;
+    --dim: #5b6672;
+    --cpu: #5aa9ff;
+    --gpu: #7ee0a1;
+    --ram: #c9a0ff;
+    --case: #ffc067;
+    --pf: #f08ab4;
+    --warn: #ffb020;
+    --hot: #ff5a4f;
+    --ok: #3ccf7d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    -webkit-user-select: none; user-select: none;
+    min-height: 100vh;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  header h1 { font-size: 17px; font-weight: 650; margin: 0; letter-spacing: .2px; }
+  header .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
+  .dot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.off { background: var(--hot); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  [hidden] { display: none !important; }
+  .grid.bottom { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top: 12px; }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .grid.bottom { grid-template-columns: minmax(0, 1fr); }
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 12px; min-width: 0; }
+  .card h2 { margin: 0 0 6px; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+  .card h2 span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .big { font-size: 46px; font-weight: 700; line-height: 1.05; letter-spacing: -1px; }
+  .big small { font-size: 20px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+  .side { font-size: 26px; font-weight: 650; }
+  .side small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; color: var(--muted); font-size: 13px; }
+  .stats b { color: var(--text); font-weight: 600; }
+  canvas { display: block; width: 100%; height: 86px; margin-top: 10px; }
+  .legend { display: flex; gap: 12px; font-size: 11px; color: var(--dim); margin-top: 4px; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  .cores { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; height: 28px; margin-top: 10px; align-items: end; }
+  .cores div { background: var(--cpu); border-radius: 2px; min-height: 2px; opacity: .85; }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 10px; }
+  .bar > div { height: 100%; background: var(--ram); border-radius: 4px; transition: width .4s; }
+  .warn { color: var(--warn) !important; }
+  .hot { color: var(--hot) !important; }
+  .probes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .probe { background: #1a1f25; border-radius: 12px; padding: 10px 12px; }
+  .probe .lbl { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .probe .v { font-size: 34px; font-weight: 700; letter-spacing: -.5px; }
+  .probe .v small { font-size: 15px; color: var(--muted); font-weight: 600; }
+  .probe .d { font-size: 12px; color: var(--dim); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .chips b { color: var(--text); font-weight: 600; }
+  .procs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .procs h3 { margin: 0 0 6px; font-size: 12px; color: var(--dim); font-weight: 600; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 14px; padding: 3px 0; position: relative; }
+  .row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 1; }
+  .row .n em { font-style: normal; color: var(--dim); font-size: 12px; margin-left: 4px; }
+  .row .val { position: relative; z-index: 1; color: var(--text); }
+  .row .fill { position: absolute; left: 0; top: 2px; bottom: 2px; border-radius: 4px; opacity: .14; }
+  footer { margin-top: 12px; color: var(--dim); font-size: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .pf { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .pf-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .pf-title { font-weight: 650; text-transform: uppercase; letter-spacing: 1px; }
+  .pf-head .num { color: var(--dim); }
+  .pf-pct { font-size: 15px; color: var(--muted); font-weight: 600; }
+  .bar > .pfbar { background: var(--pf); }
+  .gpu-extra { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">hwcast</h1>
+  <div class="status"><span id="ago">connecting</span><span class="dot" id="dot"></span></div>
+</header>
+
+<div class="grid">
+  <section class="card">
+    <h2><span>CPU</span><span id="cpuName"></span></h2>
+    <div class="hero">
+      <div class="big num" id="cpuTemp">--<small>°C</small></div>
+      <div class="side num" id="cpuLoad">--<small>%</small></div>
+    </div>
+    <div class="stats num"><span>Package <b id="cpuPow">--</b></span><span>CCD <b id="cpuCcd">--</b></span><span>Socket <b id="cpuSock">--</b></span></div>
+    <div class="cores" id="cores"></div>
+    <canvas id="cCpu"></canvas>
+    <div class="legend"><span><i style="background:var(--cpu)"></i>load</span><span><i style="background:#fff"></i>temp</span><span>5 min</span></div>
+  </section>
+
+  <!-- One card per GPU, created from whatever the driver reports -->
+  <div id="gpuSlot" style="display: contents"></div>
+
+  <section class="card">
+    <h2><span>Memory</span><span id="ramTotal"></span></h2>
+    <div class="hero">
+      <div class="big num" id="ramUsed">--<small>GB</small></div>
+      <div class="side num" id="ramPct">--<small>%</small></div>
+    </div>
+    <div class="bar"><div id="ramBar" style="width:0"></div></div>
+    <div class="stats num"><span>Free <b id="ramFree">--</b></span><span>Total <b id="ramTot2">--</b></span></div>
+    <div class="pf">
+      <div class="pf-head"><span class="pf-title">Page file</span><span class="num" id="pfSize"></span></div>
+      <div class="hero">
+        <div class="side num" id="pfUsed">--<small>GB</small></div>
+        <div class="num pf-pct" id="pfPct">--%</div>
+      </div>
+      <div class="bar"><div id="pfBar" class="pfbar" style="width:0"></div></div>
+      <div class="stats num"><span>Peak <b id="pfPeak">--</b></span><span>Commit <b id="ramCommit">--</b></span></div>
+    </div>
+    <canvas id="cRam"></canvas>
+    <div class="legend"><span><i style="background:var(--ram)"></i>RAM</span><span><i style="background:var(--pf)"></i>page file</span><span>5 min</span></div>
+  </section>
+</div>
+
+<div class="grid bottom">
+  <section class="card" id="caseCard" hidden>
+    <h2><span>Board</span><span id="boardName"></span></h2>
+    <div id="probeWrap" hidden>
+      <div class="probes" id="probes"></div>
+      <canvas id="cCase"></canvas>
+      <div class="legend" id="caseLegend"></div>
+    </div>
+    <div class="chips num" id="boardTemps"></div>
+    <div class="chips num" id="fans"></div>
+  </section>
+
+  <section class="card">
+    <h2><span>Top processes</span><span>grouped by app</span></h2>
+    <div class="procs">
+      <div><h3>CPU</h3><div id="pCpu"></div></div>
+      <div><h3>Memory</h3><div id="pMem"></div></div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <span id="self"></span>
+  <span id="notes"></span>
+</footer>
+
+<script>
+const N = 300;
+const hist = { cpuLoad: [], cpuTemp: [], ram: [], pf: [], p0: [], p1: [] };
+const gpuHist = [];
+const GPU_COLORS = ['#7ee0a1', '#5fd0e0', '#f0c75e', '#e08ad0'];
+
+function gpuCard(i) {
+  const c = GPU_COLORS[i % GPU_COLORS.length];
+  return `<section class="card" id="gpu${i}">
+    <h2><span id="gpu${i}Title">GPU ${i}</span><span id="gpu${i}Name"></span></h2>
+    <div class="hero">
+      <div class="big num" id="gpu${i}Temp">--<small>°C</small></div>
+      <div class="side num" id="gpu${i}Load">--<small>%</small></div>
+    </div>
+    <div class="stats num"><span>Power <b id="gpu${i}Pow">--</b></span><span>VRAM <b id="gpu${i}Vram">--</b></span><span>Clock <b id="gpu${i}Clk">--</b></span><span>Fan <b id="gpu${i}Fan">--</b></span></div>
+    <canvas id="cGpu${i}"></canvas>
+    <div class="legend"><span><i style="background:${c}"></i>load</span><span><i style="background:#fff"></i>temp</span><span>5 min</span></div>
+  </section>`;
+}
+
+function renderGpus(gs) {
+  const slot = $('gpuSlot');
+  // Rebuild the cards only when the GPU count changes.
+  if (slot.children.length !== gs.length) {
+    slot.innerHTML = gs.map((_, i) => gpuCard(i)).join('');
+    gpuHist.length = 0;
+    gs.forEach(() => gpuHist.push({ load: [], temp: [] }));
+  }
+  gs.forEach((g, i) => {
+    const idx = g.index ?? i;
+    $(`gpu${i}Title`).textContent = gs.length > 1 ? `GPU ${idx}` : 'GPU';
+    $(`gpu${i}Name`).textContent = g.name;
+    setTemp($(`gpu${i}Temp`), g.temp, 80, 87);
+    $(`gpu${i}Load`).innerHTML = `${fmt(g.util)}<small>%</small>`;
+    $(`gpu${i}Pow`).textContent = g.power_w == null ? '--' : `${fmt(g.power_w)} / ${fmt(g.power_limit_w)} W`;
+    $(`gpu${i}Vram`).textContent = `${fmt(g.vram_used_gb, 1)} / ${fmt(g.vram_total_gb)} GB`;
+    $(`gpu${i}Clk`).textContent = g.clock_mhz == null ? '--' : `${g.clock_mhz} MHz`;
+    $(`gpu${i}Fan`).textContent = g.fan_pct == null ? '--' : `${g.fan_pct}%`;
+    const h = gpuHist[i];
+    h.load.push(g.util); if (h.load.length > N) h.load.shift();
+    h.temp.push(g.temp); if (h.temp.length > N) h.temp.shift();
+    draw(`cGpu${i}`, [
+      { data: h.load, min: 0, max: 100, color: GPU_COLORS[i % GPU_COLORS.length], fill: true },
+      { data: h.temp, min: 30, max: 95, color: '#ffffff', width: 1.3 },
+    ]);
+  });
+}
+
+const $ =(id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const fmt = (v, d = 0) => (v == null || isNaN(v)) ? '--' : Number(v).toFixed(d);
+let last = 0;
+
+function push(k, v) { const a = hist[k]; a.push(v); if (a.length > N) a.shift(); }
+function level(v, warn, hot) { return v == null ? '' : v >= hot ? 'hot' : v >= warn ? 'warn' : ''; }
+function setTemp(el, v, warn, hot) {
+  el.innerHTML = `${fmt(v)}<small>°C</small>`;
+  el.className = 'big num ' + level(v, warn, hot);
+}
+
+function draw(id, series) {
+  const c = $(id); const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  g.strokeStyle = '#1e252c'; g.lineWidth = 1;
+  for (const f of [0.25, 0.5, 0.75]) { g.beginPath(); g.moveTo(0, Math.round(h * f) + .5); g.lineTo(w, Math.round(h * f) + .5); g.stroke(); }
+  for (const s of series) {
+    const a = s.data; if (a.length < 2) continue;
+    const x = (i) => w - (a.length - 1 - i) * (w / (N - 1));
+    const y = (v) => h - 2 - (Math.max(s.min, Math.min(s.max, v ?? s.min)) - s.min) / (s.max - s.min) * (h - 4);
+    g.beginPath();
+    a.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)));
+    if (s.fill) {
+      g.lineTo(x(a.length - 1), h); g.lineTo(x(0), h); g.closePath();
+      g.fillStyle = s.color + '33'; g.fill();
+      g.beginPath(); a.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)));
+    }
+    g.strokeStyle = s.color; g.lineWidth = s.width || 1.6; g.lineJoin = 'round'; g.stroke();
+  }
+}
+
+function rows(el, list, key, unit, color, max) {
+  el.innerHTML = list.map(p => {
+    const v = p[key]; const pct = Math.min(100, (v / max) * 100);
+    const val = unit === '%' ? `${fmt(v, 1)}%` : `${v >= 1 ? fmt(v, 2) + ' GB' : fmt(v * 1024) + ' MB'}`;
+    return `<div class="row"><div class="fill" style="width:${pct}%;background:${color}"></div><span class="n">${esc(p.name)}${p.n > 1 ? `<em>×${p.n}</em>` : ''}</span><span class="val num">${val}</span></div>`;
+  }).join('');
+}
+
+function render(d) {
+  last = Date.now();
+  if (d.host) { $('title').textContent = `hwcast · ${d.host}`; document.title = `hwcast · ${d.host}`; }
+  const sensors = d.sensors || { temps: [], fans: [] };
+  const cpu = d.cpu;
+  $('cpuName').textContent = cpu.name.replace('AMD ', '').replace(/ \d+-Core Processor/, '');
+  setTemp($('cpuTemp'), cpu.tctl, 80, 87);
+  $('cpuLoad').innerHTML = `${fmt(cpu.load)}<small>%</small>`;
+  $('cpuPow').textContent = cpu.power_w == null ? '--' : `${fmt(cpu.power_w)} W`;
+  $('cpuCcd').textContent = cpu.ccds.length ? cpu.ccds.map(v => fmt(v) + '°').join(' ') : '--';
+  const sock = sensors.temps.find(t => t.socket);
+  $('cpuSock').textContent = sock && sock.v != null ? `${fmt(sock.v)}°` : '--';
+  const cores = $('cores');
+  if (cores.children.length !== cpu.cores.length) {
+    cores.style.gridTemplateColumns = `repeat(${cpu.cores.length}, 1fr)`;
+    cores.innerHTML = cpu.cores.map(() => '<div></div>').join('');
+  }
+  cpu.cores.forEach((v, i) => { cores.children[i].style.height = Math.max(4, v) + '%'; });
+  push('cpuLoad', cpu.load); push('cpuTemp', cpu.tctl);
+  draw('cCpu', [
+    { data: hist.cpuLoad, min: 0, max: 100, color: '#5aa9ff', fill: true },
+    { data: hist.cpuTemp, min: 30, max: 95, color: '#ffffff', width: 1.3 },
+  ]);
+
+  renderGpus(d.gpus || []);
+
+  const m = d.mem; const pct = m.used_gb / m.total_gb * 100;
+  $('ramUsed').innerHTML = `${fmt(m.used_gb, 1)}<small>GB</small>`;
+  $('ramPct').innerHTML = `${fmt(pct)}<small>%</small>`;
+  $('ramPct').className = 'side num ' + level(pct, 85, 95);
+  $('ramTotal').textContent = `${fmt(m.total_gb)} GB`;
+  $('ramBar').style.width = pct + '%';
+  $('ramTot2').textContent = `${fmt(m.total_gb, 1)} GB`;
+  $('ramFree').textContent = `${fmt(m.total_gb - m.used_gb, 1)} GB`;
+  $('ramCommit').textContent = `${fmt(m.commit_used_gb, 1)} / ${fmt(m.commit_total_gb)} GB`;
+  const pfPct = m.pagefile_size_gb > 0 ? m.pagefile_used_gb / m.pagefile_size_gb * 100 : 0;
+  $('pfUsed').innerHTML = `${fmt(m.pagefile_used_gb, m.pagefile_used_gb < 10 ? 2 : 1)}<small>GB</small>`;
+  $('pfPct').textContent = `${fmt(pfPct)}%`;
+  $('pfPct').className = 'num pf-pct ' + level(pfPct, 50, 80);
+  $('pfSize').textContent = m.pagefile_size_gb > 0 ? `${fmt(m.pagefile_size_gb, 1)} GB on disk` : 'none';
+  $('pfBar').style.width = pfPct + '%';
+  $('pfPeak').textContent = `${fmt(m.pagefile_peak_gb, 1)} GB`;
+  push('ram', pct); push('pf', pfPct);
+  draw('cRam', [
+    { data: hist.ram, min: 0, max: 100, color: '#c9a0ff', fill: true },
+    { data: hist.pf, min: 0, max: 100, color: '#f08ab4', width: 1.4 },
+  ]);
+
+  const live = sensors.temps.filter(t => t.v != null);
+  $('caseCard').hidden = live.length === 0 && !sensors.fans.some(f => f.rpm > 0);
+  $('boardName').textContent = (d.board && d.board.name) || '';
+  const probes = sensors.temps.filter(t => t.probe);
+  $('probeWrap').hidden = probes.length === 0;
+  $('probes').innerHTML = probes.map(p => `<div class="probe"><div class="lbl">${esc(p.label)}</div><div class="v num ${level(p.v, 50, 60)}">${fmt(p.v)}<small>°C</small></div></div>`).join('');
+  probes.forEach((p, i) => push('p' + i, p.v));
+  const pc = ['#ffc067', '#ff8a5c'];
+  draw('cCase', probes.slice(0, 2).map((p, i) => ({ data: hist['p' + i], min: 25, max: 70, color: pc[i] })));
+  $('caseLegend').innerHTML = probes.slice(0, 2).map((p, i) => `<span><i style="background:${pc[i]}"></i>${esc(p.label)}</span>`).join('') + '<span>5 min</span>';
+  $('boardTemps').innerHTML = live.filter(t => !t.probe && !t.socket)
+    .map(t => `<span>${esc(t.label)} <b class="${level(t.v, 70, 85)}">${fmt(t.v)}°</b></span>`).join('');
+  $('fans').innerHTML = sensors.fans.filter(f => f.rpm > 0).map(f => `<span>${esc(f.label)} <b>${fmt(f.rpm)}</b> rpm</span>`).join('');
+
+  const pr = d.procs;
+  rows($('pCpu'), pr.cpu, 'pct', '%', '#5aa9ff', Math.max(25, ...pr.cpu.map(p => p.pct)));
+  rows($('pMem'), pr.mem, 'gb', 'GB', '#c9a0ff', Math.max(1, ...pr.mem.map(p => p.gb)));
+
+  const s = d.self;
+  $('self').textContent = `hwcast: ${fmt(s.rss_mb, 1)} MB RAM, ${s.cpu_pct == null ? '--' : fmt(s.cpu_pct, 2)}% CPU, ${fmt(s.sample_ms, 1)} ms per sample`;
+  $('notes').textContent = '';
+}
+
+function tick() {
+  const age = (Date.now() - last) / 1000;
+  const dot = $('dot');
+  if (!last) { $('ago').textContent = 'connecting'; dot.className = 'dot'; }
+  else if (age < 4) { $('ago').textContent = 'live'; dot.className = 'dot live'; }
+  else { $('ago').textContent = `offline ${Math.round(age)}s`; dot.className = 'dot off'; }
+}
+setInterval(tick, 1000);
+
+function connect() {
+  const es = new EventSource('/events');
+  es.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch (err) { $('notes').textContent = String(err); } tick(); };
+  es.onerror = () => { tick(); };
+}
+
+// Demo mode: the same dashboard fed by made-up data. Used by the public live demo
+// (docs/demo/) and only active at /demo/ or with ?demo, which the real service never serves.
+const DEMO = /[?&]demo\b/.test(location.search) || location.pathname.includes('/demo/');
+
+function demoFeed() {
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const s = { cpu: 25, g0: 60, g1: 10, ram: 42, pf: 1.4 };
+  const cores = Array.from({ length: 16 }, () => rnd(5, 40));
+  let t = 0;
+  function sample() {
+    t++;
+    const job = (Math.sin(t / 45) + 1) / 2;            // a slow render-like wave
+    s.cpu = clamp(s.cpu * 0.85 + (12 + 50 * job) * 0.15 + rnd(-4, 4), 3, 97);
+    s.g0 = clamp(s.g0 * 0.85 + (35 + 63 * job) * 0.15 + rnd(-4, 4), 0, 100);
+    s.g1 = clamp(s.g1 * 0.9 + (Math.sin(t / 23) > 0.3 ? 72 : 3) * 0.1 + rnd(-3, 3), 0, 100);
+    s.ram = clamp(s.ram + rnd(-0.4, 0.4), 30, 70);
+    s.pf = clamp(s.pf + rnd(-0.05, 0.05), 0.5, 4);
+    for (let i = 0; i < cores.length; i++) cores[i] = clamp(cores[i] * 0.5 + s.cpu * 0.5 + rnd(-18, 18), 0, 100);
+    const tctl = 47 + 0.36 * s.cpu + rnd(-0.8, 0.8);
+    const g0t = 37 + 0.38 * s.g0, g1t = 33 + 0.32 * s.g1;
+    const gpu = (index, name, u, temp, vram, limit) => ({
+      index, name, temp: Math.round(temp), util: Math.round(u), mem_util: Math.round(u * 0.6),
+      vram_used_gb: 2 + (vram - 4) * u / 100, vram_total_gb: vram, power_w: 20 + (limit - 40) * u / 100,
+      power_limit_w: limit, fan_pct: Math.round(30 + 0.5 * u), clock_mhz: Math.round(u > 5 ? 2400 + rnd(-60, 60) : 400),
+    });
+    return {
+      host: 'demo',
+      board: { name: 'Demo board', profile: 'demo' },
+      cpu: { name: '8-Core Processor', tctl, ccds: [tctl - 7], power_w: 28 + 0.9 * s.cpu, load: s.cpu, cores: cores.map(r1) },
+      mem: {
+        used_gb: 64 * s.ram / 100, total_gb: 64, commit_used_gb: 64 * s.ram / 100 * 1.25, commit_total_gb: 80,
+        pagefile_used_gb: s.pf, pagefile_size_gb: 16, pagefile_peak_gb: 5.2,
+      },
+      gpus: [gpu(0, 'GPU model A', s.g0, g0t, 16, 300), gpu(1, 'GPU model B', s.g1, g1t, 12, 250)],
+      sensors: {
+        temps: [
+          { id: 'demo.t0', label: 'System', v: Math.round(31 + 0.06 * s.g0) },
+          { id: 'demo.t1', label: 'Chipset', v: Math.round(48 + 0.05 * s.cpu) },
+          { id: 'demo.t2', label: 'CPU socket', socket: true, v: Math.round(tctl - 2) },
+          { id: 'demo.t3', label: 'PCIe x16', v: Math.round(36 + 0.12 * s.g0) },
+          { id: 'demo.t4', label: 'VRM', v: Math.round(40 + 0.15 * s.cpu) },
+          { id: 'demo.t5', label: 'Probe A', probe: true, v: Math.round(31 + 0.16 * s.g0 + 0.08 * s.g1) },
+          { id: 'demo.t6', label: 'Probe B', probe: true, v: Math.round(30 + 0.12 * s.g0) },
+        ],
+        fans: [
+          { id: 'demo.f0', label: 'CPU fan', rpm: Math.round(850 + 11 * s.cpu) },
+          { id: 'demo.f1', label: 'Sys fan 1', rpm: Math.round(700 + 7 * s.g0) },
+          { id: 'demo.f2', label: 'Sys fan 2', rpm: Math.round(700 + 7 * s.g0) },
+        ],
+      },
+      procs: {
+        cpu: [
+          { name: 'renderer', n: 1, pct: r1(0.7 * s.cpu) }, { name: 'game', n: 1, pct: r1(0.15 * s.cpu + 2) },
+          { name: 'browser', n: 24, pct: r1(rnd(1, 4)) }, { name: 'editor', n: 3, pct: r1(rnd(0.5, 2)) },
+          { name: 'music', n: 2, pct: r1(rnd(0.2, 1)) }, { name: 'chat', n: 5, pct: r1(rnd(0.1, 0.8)) },
+        ].sort((a, b) => b.pct - a.pct),
+        mem: [
+          { name: 'renderer', n: 1, gb: 9.6 }, { name: 'game', n: 1, gb: 6.1 }, { name: 'browser', n: 24, gb: 2.4 },
+          { name: 'editor', n: 3, gb: 1.1 }, { name: 'chat', n: 5, gb: 0.6 }, { name: 'music', n: 2, gb: 0.3 },
+        ],
+      },
+      self: { rss_mb: 23.4, cpu_pct: 0.08, sample_ms: 1.8 },
+    };
+  }
+  const show = () => { render(sample()); $('notes').textContent = 'Live demo with made-up data'; tick(); };
+  for (let i = 0; i < N - 1; i++) render(sample());   // start with full graphs
+  show();
+  setInterval(show, 1000);
+}
+
+if (DEMO) demoFeed(); else connect();
+
+let lock = null;
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && !lock) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (_) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+document.addEventListener('click', keepAwake);
+keepAwake();
+</script>
+</body>
+</html>
