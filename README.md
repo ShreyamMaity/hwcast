@@ -1,13 +1,13 @@
 # hwcast
 
-[![Rust](https://img.shields.io/badge/Rust-9A4F2B?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4)](#requirements)
-[![NVIDIA](https://img.shields.io/badge/NVIDIA-multi--GPU-76B900?logo=nvidia&logoColor=white)](#hardware-support)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/network)
-[![Live demo](https://img.shields.io/badge/Live-demo-3CCF7D)](https://shreyammaity.github.io/hwcast/demo/)
-[![Setup with an agent](https://img.shields.io/badge/Setup%20with-an%20agent-2F6FDE?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxyZWN0IHg9IjExIiB5PSIxLjUiIHdpZHRoPSIyIiBoZWlnaHQ9IjMuNSIgcng9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEuOCIgcj0iMS41Ii8%2BPHJlY3QgeD0iMy41IiB5PSI2IiB3aWR0aD0iMTciIGhlaWdodD0iMTMiIHJ4PSI0Ii8%2BPHJlY3QgeD0iMC41IiB5PSIxMCIgd2lkdGg9IjIuNSIgaGVpZ2h0PSI1IiByeD0iMS4yIi8%2BPHJlY3QgeD0iMjEiIHk9IjEwIiB3aWR0aD0iMi41IiBoZWlnaHQ9IjUiIHJ4PSIxLjIiLz48Y2lyY2xlIGN4PSI4LjUiIGN5PSIxMS41IiByPSIyIiBmaWxsPSIjMkY2RkRFIi8%2BPGNpcmNsZSBjeD0iMTUuNSIgY3k9IjExLjUiIHI9IjIiIGZpbGw9IiMyRjZGREUiLz48cmVjdCB4PSI4IiB5PSIxNS4zIiB3aWR0aD0iOCIgaGVpZ2h0PSIxLjYiIHJ4PSIwLjgiIGZpbGw9IiMyRjZGREUiLz48L3N2Zz4%3D)](https://shreyammaity.github.io/hwcast/setup/)
+[![Rust](assets/badges/rust.svg)](https://www.rust-lang.org/)
+[![Windows](assets/badges/windows.svg)](#requirements)
+[![NVIDIA](assets/badges/nvidia.svg)](#hardware-support)
+[![License](assets/badges/license.svg)](LICENSE)
+[![GitHub stars](https://badgen.net/github/stars/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/stargazers)
+[![GitHub forks](https://badgen.net/github/forks/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/network)
+[![Live demo](assets/badges/demo.svg)](https://shreyammaity.github.io/hwcast/demo/)
+[![Setup with an agent](assets/badges/agent.svg)](https://shreyammaity.github.io/hwcast/setup/)
 
 A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second.
 
@@ -211,17 +211,13 @@ cargo build --release                        # target\release\hwcast.exe
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Releases are not code signed yet, so Windows SmartScreen may warn the first time you run `hwcast.exe` ("Windows protected your PC"). Click **More info**, then **Run anyway**. To check a download yourself, compare `Get-FileHash hwcast.exe` with the line in the release's `SHA256SUMS.txt`.
 
-Signing starts with the first release built after the project's SignPath Foundation approval; earlier releases are unsigned. Signed releases show "SignPath Foundation" as the publisher.
-
-- Every release is built from this repository's source by [GitHub Actions](.github/workflows/release.yml) on GitHub-hosted runners, and only those builds are submitted for signing.
-- Each signing request is approved manually by an approver.
+- Every release is built from this repository's source by [GitHub Actions](.github/workflows/release.yml) on GitHub-hosted runners. Nothing is built or uploaded by hand.
 - Team roles:
   - Committers and reviewers: [Shreyam Maity](https://github.com/ShreyamMaity)
   - Approvers: [Shreyam Maity](https://github.com/ShreyamMaity)
 - Contributions from people outside the team are reviewed before they are merged.
-
 ## Privacy
 
 hwcast does not send any information to other networked systems. It serves the dashboard only to devices that open it (this PC, your local network and VPN addresses by default) and has no telemetry, analytics or update checks. The only outbound connection is optional and happens during installation, when you agree to install the PawnIO driver through winget.

@@ -1,9 +1,9 @@
-# Builds hwcast on GitHub-hosted Windows runners, signs it through SignPath
-# (once the project is approved and configured), and drafts a GitHub release.
+# Builds hwcast on GitHub-hosted Windows runners, optionally signs it through SignPath,
+# and drafts a GitHub release.
 #
 # Run it by pushing a tag (git tag v0.2.0 && git push origin v0.2.0) or from the Actions tab.
 # Signing runs only when the SIGNPATH_ORGANIZATION_ID repository variable is set;
-# until then the release is built unsigned. Releases are created as drafts for review.
+# otherwise the release is built unsigned. Releases are created as drafts for review.
 
 name: release
 
