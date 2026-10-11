@@ -177,7 +177,7 @@ function gpuCard(i) {
       <div class="big num" id="gpu${i}Temp">--<small>°C</small></div>
       <div class="side num" id="gpu${i}Load">--<small>%</small></div>
     </div>
-    <div class="stats num"><span>Power <b id="gpu${i}Pow">--</b></span><span>VRAM <b id="gpu${i}Vram">--</b></span><span>Clock <b id="gpu${i}Clk">--</b></span><span>Fan <b id="gpu${i}Fan">--</b></span></div>
+    <div class="stats num"><span>Power <b id="gpu${i}Pow">--</b></span><span>VRAM <b id="gpu${i}Vram">--</b></span><span>Clock <b id="gpu${i}Clk">--</b></span><span>Fan <b id="gpu${i}Fan">--</b></span><span id="gpu${i}HotBox" hidden>Hotspot <b id="gpu${i}Hot">--</b></span><span id="gpu${i}MemTBox" hidden>VRAM temp <b id="gpu${i}MemT">--</b></span></div>
     <canvas id="cGpu${i}"></canvas>
     <div class="legend"><span><i style="background:${c}"></i>load</span><span><i style="background:#fff"></i>temp</span><span>5 min</span></div>
   </section>`;
@@ -200,7 +200,11 @@ function renderGpus(gs) {
     $(`gpu${i}Pow`).textContent = g.power_w == null ? '--' : `${fmt(g.power_w)} / ${fmt(g.power_limit_w)} W`;
     $(`gpu${i}Vram`).textContent = `${fmt(g.vram_used_gb, 1)} / ${fmt(g.vram_total_gb)} GB`;
     $(`gpu${i}Clk`).textContent = g.clock_mhz == null ? '--' : `${g.clock_mhz} MHz`;
-    $(`gpu${i}Fan`).textContent = g.fan_pct == null ? '--' : `${g.fan_pct}%`;
+    $(`gpu${i}Fan`).textContent = g.fan_pct == null ? '--' : g.fan_rpm ? `${g.fan_pct}%, ${fmt(g.fan_rpm)} rpm` : `${g.fan_pct}%`;
+    $(`gpu${i}HotBox`).hidden = g.hotspot == null;
+    $(`gpu${i}Hot`).textContent = g.hotspot == null ? '--' : `${fmt(g.hotspot)} °C`;
+    $(`gpu${i}MemTBox`).hidden = g.mem_temp == null;
+    $(`gpu${i}MemT`).textContent = g.mem_temp == null ? '--' : `${fmt(g.mem_temp)} °C`;
     const h = gpuHist[i];
     h.load.push(g.util); if (h.load.length > N) h.load.shift();
     h.temp.push(g.temp); if (h.temp.length > N) h.temp.shift();
@@ -364,7 +368,8 @@ function demoFeed() {
     const gpu = (index, name, u, temp, vram, limit) => ({
       index, name, temp: Math.round(temp), util: Math.round(u), mem_util: Math.round(u * 0.6),
       vram_used_gb: 2 + (vram - 4) * u / 100, vram_total_gb: vram, power_w: 20 + (limit - 40) * u / 100,
-      power_limit_w: limit, fan_pct: Math.round(30 + 0.5 * u), clock_mhz: Math.round(u > 5 ? 2400 + rnd(-60, 60) : 400),
+      power_limit_w: limit, fan_pct: Math.round(30 + 0.5 * u), fan_rpm: Math.round(1000 + 22 * u),
+      hotspot: Math.round(temp + 9 + 0.05 * u), mem_temp: Math.round(temp + 12 + 0.1 * u), clock_mhz: Math.round(u > 5 ? 2400 + rnd(-60, 60) : 400),
     });
     return {
       host: 'demo',

@@ -110,7 +110,7 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 ## What it shows
 
 - **CPU**: temperature (Tctl), per CCD temperatures, package power, total and per thread load, 5 minute graph
-- **GPUs** (NVIDIA): temperature, load, power vs limit, VRAM, clock and fan for every card, each with its own graph
+- **GPUs** (NVIDIA): temperature, hotspot and memory temperature where the card reports them, load, power vs limit, VRAM, clock and fan speed for every card, each with its own graph
 - **Memory**: RAM used and free, page file in use and peak, commit charge, graph of both
 - **Board**: motherboard temperatures, fan speeds, and external thermistor probes as large tiles
 - **Top processes**: by CPU and by memory, grouped by app the way Task Manager groups them
@@ -168,6 +168,16 @@ sensors (PawnIO, NVML, Windows)  >  hwcast service  >  Server-Sent Events over y
 - No WMI, no polling of other tools, no telemetry of its own.
 
 `/api/now` returns one JSON snapshot, handy for scripts and home automation.
+
+## Mods
+
+Mods are separate programs that read the same `/events` stream and send the data somewhere else: a small display, an LED strip, a home automation hub. hwcast itself stays read only and knows nothing about them. The stream format is versioned and documented in [docs/mods.md](docs/mods.md).
+
+| Mod | What it does |
+|---|---|
+| [hwcast-gcb200](https://github.com/ShreyamMaity/hwcast-gcb200) | Shows two live values with load bars on the Ant Esports GCB200 GPU bracket display |
+
+Built one? Open a pull request that adds it to this table.
 
 ## Security
 

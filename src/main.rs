@@ -11,6 +11,7 @@ mod board;
 mod cpu;
 mod gpu;
 mod manage;
+mod nvapi;
 mod pawnio;
 mod service;
 mod superio;
@@ -250,6 +251,8 @@ impl Sampler {
         self.self_cpu = Some((cpu_s, now));
 
         json!({
+            // Snapshot schema version for mods (docs/mods.md). Bump only on breaking changes.
+            "api": 1,
             "host": self.host,
             "board": {"name": self.board, "profile": self.profile},
             "t": SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0),
