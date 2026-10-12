@@ -5,12 +5,14 @@
 //!   hwcast install|uninstall|start|stop|status|open   manage the Windows service
 //!   hwcast run              run the server in the foreground (admin for sensors)
 //!   hwcast service          entry point used by the Windows service manager
+//!   hwcast mcp              MCP server on stdio for AI agents (bridges to the service)
 //!   hwcast --once           print one full JSON snapshot and exit
 
 mod board;
 mod cpu;
 mod gpu;
 mod manage;
+mod mcp;
 mod nvapi;
 mod pawnio;
 mod service;
@@ -19,7 +21,7 @@ mod sys;
 
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Condvar, Mutex};
@@ -297,6 +299,51 @@ impl Hub {
     }
 }
 
+impl Hub {
+    /// A sample at most 1.5 s old, waking the sampler for a few seconds if idle.
+    fn now(&self) -> Option<Arc<String>> {
+        let mut st = self.st.lock().unwrap();
+        let fresh = |s: &HubState| s.latest.as_ref().filter(|(at, _)| at.elapsed() < Duration::from_millis(1500)).map(|(_, m)| m.clone());
+        let mut got = fresh(&st);
+        if got.is_none() {
+            st.demand_until = Some(Instant::now() + Duration::from_secs(4));
+            self.cv.notify_all();
+            let deadline = Instant::now() + Duration::from_secs(4);
+            while got.is_none() && Instant::now() < deadline {
+                st = self.cv.wait_timeout(st, Duration::from_millis(200)).unwrap().0;
+                got = fresh(&st);
+            }
+        }
+        got
+    }
+}
+
+impl mcp::Source for Hub {
+    fn now(&self) -> Option<Value> {
+        Hub::now(self).and_then(|m| serde_json::from_str(&m).ok())
+    }
+
+    fn watch(&self, secs: f64, f: &mut dyn FnMut(&Value) -> bool) {
+        let (tx, rx) = sync_channel::<Arc<String>>(4);
+        {
+            let mut st = self.st.lock().unwrap();
+            st.subs.push(tx);
+            self.cv.notify_all();
+        }
+        let deadline = Instant::now() + Duration::from_secs_f64(secs);
+        while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+            match rx.recv_timeout(left) {
+                Ok(m) => match serde_json::from_str(&m) {
+                    Ok(v) if !f(&v) => break,
+                    _ => {}
+                },
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => break,
+                Err(_) => break,
+            }
+        }
+    }
+}
+
 fn run_sampler(hub: Arc<Hub>, mut s: Sampler) {
     let mut last = Instant::now() - Duration::from_secs(60);
     loop {
@@ -356,13 +403,45 @@ fn handle(mut stream: TcpStream, hub: Arc<Hub>) {
     if reader.read_line(&mut line).is_err() {
         return;
     }
-    // Drain headers.
+    // Headers: only the body length and browser origin matter (for /mcp).
+    let (mut len, mut origin) = (0usize, None::<String>);
     let mut h = String::new();
     while reader.read_line(&mut h).map(|n| n > 2).unwrap_or(false) {
+        if let Some((k, v)) = h.split_once(':') {
+            match k.trim().to_ascii_lowercase().as_str() {
+                "content-length" => len = v.trim().parse().unwrap_or(0),
+                "origin" => origin = Some(v.trim().to_string()),
+                _ => {}
+            }
+        }
         h.clear();
     }
+    let method = line.split_whitespace().next().unwrap_or("GET");
     let path = line.split_whitespace().nth(1).unwrap_or("/").split('?').next().unwrap_or("/");
     match path {
+        "/mcp" => {
+            if !mcp::origin_ok(origin.as_deref()) {
+                return respond(&mut stream, "403 Forbidden", "text/plain", b"origin not allowed");
+            }
+            if method != "POST" {
+                return respond(&mut stream, "405 Method Not Allowed", "text/plain", b"use POST (MCP streamable HTTP, JSON responses only)");
+            }
+            if len > 1 << 20 {
+                return respond(&mut stream, "413 Payload Too Large", "text/plain", b"too large");
+            }
+            let mut body = vec![0u8; len];
+            if reader.read_exact(&mut body).is_err() {
+                return;
+            }
+            let _ = stream.set_read_timeout(None);
+            match serde_json::from_slice::<Value>(&body) {
+                Err(_) => respond(&mut stream, "400 Bad Request", "application/json", mcp::parse_error().to_string().as_bytes()),
+                Ok(msg) => match mcp::handle(&msg, &*hub) {
+                    Some(r) => respond(&mut stream, "200 OK", "application/json", r.to_string().as_bytes()),
+                    None => respond(&mut stream, "202 Accepted", "text/plain", b""),
+                },
+            }
+        }
         "/" | "/index.html" => respond(&mut stream, "200 OK", "text/html; charset=utf-8", INDEX_HTML.as_bytes()),
         "/manifest.json" => respond(
             &mut stream,
@@ -370,25 +449,10 @@ fn handle(mut stream: TcpStream, hub: Arc<Hub>) {
             "application/manifest+json",
             br##"{"name":"hwcast","short_name":"hwcast","display":"standalone","background_color":"#0b0d10","theme_color":"#0b0d10","start_url":"/"}"##,
         ),
-        "/api/now" => {
-            let mut st = hub.st.lock().unwrap();
-            let fresh = |s: &HubState| s.latest.as_ref().filter(|(at, _)| at.elapsed() < Duration::from_millis(1500)).map(|(_, m)| m.clone());
-            let mut got = fresh(&st);
-            if got.is_none() {
-                st.demand_until = Some(Instant::now() + Duration::from_secs(4));
-                hub.cv.notify_all();
-                let deadline = Instant::now() + Duration::from_secs(4);
-                while got.is_none() && Instant::now() < deadline {
-                    st = hub.cv.wait_timeout(st, Duration::from_millis(200)).unwrap().0;
-                    got = fresh(&st);
-                }
-            }
-            drop(st);
-            match got {
-                Some(m) => respond(&mut stream, "200 OK", "application/json", m.as_bytes()),
-                None => respond(&mut stream, "503 Service Unavailable", "text/plain", b"no sample"),
-            }
-        }
+        "/api/now" => match hub.now() {
+            Some(m) => respond(&mut stream, "200 OK", "application/json", m.as_bytes()),
+            None => respond(&mut stream, "503 Service Unavailable", "text/plain", b"no sample"),
+        },
         "/events" => {
             let (tx, rx) = sync_channel::<Arc<String>>(4);
             let first = {
@@ -480,6 +544,7 @@ fn main() {
         Some("--once") => print_snapshot(),
         Some("run") => run_server(),
         Some("service") => service::run(),
+        Some("mcp") => mcp::stdio(rest),
         Some(cmd) => manage::dispatch(cmd, rest),
     }
 }

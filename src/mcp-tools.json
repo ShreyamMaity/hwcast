@@ -1,0 +1,135 @@
+[
+  {
+    "name": "get_summary",
+    "title": "Hardware summary",
+    "description": "One compact reading of the whole PC: CPU temperature, load and power; every GPU's temperature, load, VRAM, power and fan; RAM; the busiest processes. Call this first.",
+    "properties": {}
+  },
+  {
+    "name": "get_cpu",
+    "title": "CPU detail",
+    "description": "CPU model, temperature (Tctl and per CCD on AMD), package power, total load and the load of every logical processor.",
+    "properties": {}
+  },
+  {
+    "name": "get_gpus",
+    "title": "GPU detail",
+    "description": "Every NVIDIA GPU (index as nvidia-smi counts them): temperature, hotspot and memory temperature, core and memory-controller load, VRAM used/free/total, power and limit, clock, fan.",
+    "properties": {
+      "index": {
+        "description": "Only this GPU. Omit for all.",
+        "minimum": 0,
+        "type": "integer"
+      }
+    }
+  },
+  {
+    "name": "get_memory",
+    "title": "Memory detail",
+    "description": "Physical RAM, commit charge and page file, in GB.",
+    "properties": {}
+  },
+  {
+    "name": "get_sensors",
+    "title": "Motherboard sensors",
+    "description": "Motherboard temperatures (including thermistor probes) and fan speeds with their labels and ids.",
+    "properties": {}
+  },
+  {
+    "name": "get_processes",
+    "title": "Top processes",
+    "description": "The six processes using the most CPU (percent of the whole CPU) and the six using the most memory (private GB), grouped by program name.",
+    "properties": {}
+  },
+  {
+    "name": "get_snapshot",
+    "title": "Raw snapshot",
+    "description": "The full raw hwcast snapshot (api 1 schema, the same JSON mods receive). Larger than the other tools; prefer them unless you need every field.",
+    "properties": {}
+  },
+  {
+    "name": "list_metrics",
+    "title": "List metrics",
+    "description": "Every metric name this PC offers, with its unit and current value. Use these names with sample and wait_for.",
+    "properties": {}
+  },
+  {
+    "name": "sample",
+    "title": "Sample metrics",
+    "description": "Watch metrics for a few seconds (one reading per second) and return min, average, max and last for each. Better than one reading when loads fluctuate.",
+    "properties": {
+      "metrics": {
+        "description": "Names from list_metrics, e.g. gpu0.load, cpu.temp. Default: CPU temperature and load, and each GPU's temperature, load, VRAM used and power.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "seconds": {
+        "default": 5,
+        "maximum": 60,
+        "minimum": 1,
+        "type": "number"
+      }
+    }
+  },
+  {
+    "name": "check_gpu_free",
+    "title": "Check GPU free",
+    "description": "Decide whether a GPU is free for new work: watches every GPU for a few seconds and reports average and peak load, minimum free VRAM and a free/busy verdict for each, plus the best free GPU.",
+    "properties": {
+      "max_load_pct": {
+        "default": 10,
+        "description": "A GPU whose peak load stays at or below this counts as idle.",
+        "maximum": 100,
+        "minimum": 0,
+        "type": "number"
+      },
+      "need_vram_gb": {
+        "description": "VRAM the job needs, GB. Default 0.",
+        "minimum": 0,
+        "type": "number"
+      },
+      "seconds": {
+        "default": 3,
+        "maximum": 30,
+        "minimum": 1,
+        "type": "number"
+      }
+    }
+  },
+  {
+    "name": "wait_for",
+    "title": "Wait for a condition",
+    "description": "Block until a metric stays below or above a threshold for hold_seconds in a row, or until the timeout. For example wait until gpu0.load is below 5 (a job finished) or gpu1.temp is below 50.",
+    "properties": {
+      "above": {
+        "description": "Condition: value is above this.",
+        "type": "number"
+      },
+      "below": {
+        "description": "Condition: value is below this. Give below or above.",
+        "type": "number"
+      },
+      "hold_seconds": {
+        "default": 5,
+        "maximum": 300,
+        "minimum": 0,
+        "type": "number"
+      },
+      "metric": {
+        "description": "A name from list_metrics.",
+        "type": "string"
+      },
+      "timeout_seconds": {
+        "default": 120,
+        "maximum": 600,
+        "minimum": 1,
+        "type": "number"
+      }
+    },
+    "required": [
+      "metric"
+    ]
+  }
+]

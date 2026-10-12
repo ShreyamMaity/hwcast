@@ -2,6 +2,8 @@
 
 A mod is any program that reads hwcast's live data and does something with it. hwcast does not load plugins: mods run as their own process (or service), connect over HTTP and never need admin rights or access to hardware sensors.
 
+Want an AI agent to read hwcast instead of a program? Use the built-in MCP server described in [mcp.md](mcp.md).
+
 ## Endpoints
 
 | Endpoint | Returns |

@@ -44,6 +44,7 @@ Usage:
   hwcast status              Service state, sensor driver, dashboard addresses
   hwcast open                Open the dashboard in your browser
   hwcast run                 Run in the foreground instead of as a service
+  hwcast mcp [--host <h:p>]  MCP server for AI agents on stdio (reads the running service)
   hwcast --once              Print one JSON snapshot of every sensor (run as admin)
   hwcast --version",
         env!("CARGO_PKG_VERSION")
@@ -242,7 +243,7 @@ fn port_from_config(cfg: &Value) -> Option<u16> {
     cfg["bind"].as_array()?.first()?.as_str()?.rsplit(':').next()?.parse().ok()
 }
 
-fn configured_port() -> u16 {
+pub(crate) fn configured_port() -> u16 {
     installed_dir()
         .and_then(|d| std::fs::read_to_string(d.join("config.json")).ok())
         .and_then(|s| serde_json::from_str::<Value>(s.trim_start_matches('\u{feff}')).ok())
@@ -400,6 +401,8 @@ fn print_urls(port: u16) {
     if let Some(ip) = local_ip("100.100.100.100:53").filter(|ip| ip.starts_with("100.")) {
         println!("              http://{ip}:{port}   (Tailscale / VPN)");
     }
+    println!("  AI agents:  MCP at /mcp on the same addresses, or run `hwcast mcp`. Claude Code:");
+    println!("              claude mcp add --scope user hwcast -- hwcast mcp");
 }
 
 /// The local address Windows would use to reach `target` (UDP connect sends nothing).

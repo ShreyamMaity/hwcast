@@ -6,12 +6,19 @@
 [![License](assets/badges/license.svg)](LICENSE)
 [![GitHub stars](https://badgen.net/github/stars/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/stargazers)
 [![GitHub forks](https://badgen.net/github/forks/ShreyamMaity/hwcast)](https://github.com/ShreyamMaity/hwcast/network)
+[![MCP server](assets/badges/mcp.svg)](#ai-agents-mcp)
+[![Mods supported](assets/badges/mods.svg)](#mods)
 [![Live demo](assets/badges/demo.svg)](https://shreyammaity.github.io/hwcast/demo/)
 [![Setup with an agent](assets/badges/agent.svg)](https://shreyammaity.github.io/hwcast/setup/)
 
-A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second.
+A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second. It also feeds the same data to AI agents through a built-in MCP server and to mods like small displays.
 
 Nothing to install on the viewing device. Open the address in any browser on your local network (a laptop, a spare monitor, a tablet, a phone) and leave it open.
+
+The same live data goes beyond the browser:
+
+- **[AI agents (MCP)](#ai-agents-mcp)**: a built-in MCP server lets Claude Code, Codex, Cursor and other agents read your hardware, find a free GPU or wait for a job to finish.
+- **[Mods](#mods)**: separate programs can subscribe to the stream and show it anywhere, like the [GCB200 bracket display](https://github.com/ShreyamMaity/hwcast-gcb200) mod.
 
 **[Try the live demo](https://shreyammaity.github.io/hwcast/demo/)**: the real dashboard running on made-up data, right in your browser.
 
@@ -24,6 +31,8 @@ Nothing to install on the viewing device. Open the address in any browser on you
 - **Real sensors**: CPU temperature and package power, motherboard temperatures, fans and your own thermistor probes, read directly through the signed PawnIO driver.
 - **Costs nothing when nobody is watching**: sensors are only read while a dashboard is open. 0% CPU and about 0.2 MB of RAM otherwise.
 - **Local network by default**: any device at home can open it, nothing is exposed to the internet. Works through Tailscale or any VPN for access from elsewhere.
+- **Mods**: a versioned live stream that other programs can build on: small displays, LED strips, home automation. See [Mods](#mods).
+- **Built for AI agents too**: an MCP server is built in, so Claude Code, Codex, Cursor and other agents can check temperatures, find a free GPU or wait for a job to finish. See [hwcast for AI agents](#ai-agents-mcp).
 - **Plain commands**: `hwcast status`, `start`, `stop`, `open`, `uninstall`. Start and stop need no admin prompt.
 
 ## Quick start
@@ -36,7 +45,7 @@ Nothing to install on the viewing device. Open the address in any browser on you
 
 **Option 2: let your AI coding agent set it up**
 
-Click [**Setup with an agent**](https://shreyammaity.github.io/hwcast/setup/) and pick yours: Claude Code (one click), Codex, Antigravity, Grok Build, or any other agent that can run PowerShell. It starts with a prepared prompt; the agent checks your hardware, asks a few questions (port, where you will view the dashboard, sensor driver, install folder) and installs hwcast once you confirm. The steps it follows are in [docs/agent-setup.md](docs/agent-setup.md).
+Click [**Setup with an agent**](https://shreyammaity.github.io/hwcast/setup/) and pick yours: Claude Code (one click), Codex, Antigravity, Grok Build, or any other agent that can run PowerShell. It starts with a prepared prompt; the agent checks your hardware, asks a few questions (port, where you will view the dashboard, sensor driver, install folder, connecting AI agents) and installs hwcast once you confirm. The steps it follows are in [docs/agent-setup.md](docs/agent-setup.md).
 
 Or paste this prompt into any coding agent yourself:
 
@@ -58,6 +67,7 @@ After installing, `hwcast` works in any new terminal.
 | `hwcast install [--port 9000] [--dir D:\Tools\hwcast]` | Installs or updates. Run a newer `hwcast.exe` the same way to upgrade; your config is kept |
 | `hwcast uninstall [--keep-config]` | Removes everything. Also available in Settings > Apps |
 | `hwcast run` | Runs in the foreground instead of as a service |
+| `hwcast mcp` | MCP server for AI agents on stdin and stdout. Agents start it themselves, see [below](#ai-agents-mcp) |
 | `hwcast --once` | Prints every sensor as JSON (run as admin). Useful to find sensor IDs |
 
 The installer adds a **hwcast** entry to the Start menu that opens the dashboard, and an entry in **Settings > Apps** for uninstalling.
@@ -105,7 +115,7 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 | CPU while a dashboard is open | about 1.3% of one core |
 | Memory while a dashboard is open | about 23 MB (mostly the NVIDIA library) |
 | Network | about 1 KB per second per viewer |
-| Download | one exe, about 600 KB |
+| Download | one exe, about 730 KB |
 
 ## What it shows
 
@@ -167,7 +177,34 @@ sensors (PawnIO, NVML, Windows)  >  hwcast service  >  Server-Sent Events over y
 - CPU and board sensors are read through PawnIO, a signed driver that runs small sandboxed modules for port and register access. hwcast only reads sensors and never writes fan or voltage settings. It holds the same bus locks HWiNFO, LibreHardwareMonitor and vendor tools use, so they can run at the same time.
 - No WMI, no polling of other tools, no telemetry of its own.
 
-`/api/now` returns one JSON snapshot, handy for scripts and home automation.
+`/api/now` returns one JSON snapshot, handy for scripts and home automation. `/mcp` serves the same data to AI agents ([docs/mcp.md](docs/mcp.md)).
+
+## AI agents (MCP)
+
+hwcast has a built-in [MCP](https://modelcontextprotocol.io) server, so AI agents can read your hardware live. It is read only: agents can look, never change anything.
+
+On this PC (Claude Code shown; Codex, Cursor, Claude Desktop and VS Code are in the guide):
+
+```
+claude mcp add --scope user hwcast -- hwcast mcp
+```
+
+From another machine on your network or tailnet:
+
+```
+claude mcp add --scope user --transport http hwcast http://192.168.1.20:8340/mcp
+```
+
+| Tool | Does |
+|---|---|
+| `get_summary` | CPU, every GPU, RAM and the busiest apps in one compact reading |
+| `get_cpu`, `get_gpus`, `get_memory`, `get_sensors`, `get_processes` | Detail for one area |
+| `check_gpu_free` | Watches the GPUs for a few seconds and says which one is free for a job that needs a given amount of VRAM |
+| `sample` | Min, average and max of any metrics over up to a minute |
+| `wait_for` | Waits until a metric drops below or rises above a value, for example until a render finishes or a GPU cools down |
+| `list_metrics`, `get_snapshot` | Every metric name with its value, and the raw snapshot |
+
+Setup for every client, metric names and protocol details: [docs/mcp.md](docs/mcp.md).
 
 ## Mods
 
@@ -182,7 +219,8 @@ Built one? Open a pull request that adds it to this table.
 ## Security
 
 - Only this PC, your local network and VPN addresses (`100.64.0.0/10`) can connect by default. hwcast checks this itself, and the installer's firewall rule enforces it too. Nothing is opened to the internet.
-- Read only. There is nothing to control on the dashboard.
+- Read only. There is nothing to control on the dashboard, and the MCP tools for agents only read too.
+- The MCP endpoint refuses requests from web pages served by other sites, so a page you visit cannot use it to read your PC.
 - No login. Anyone on your local network can see the dashboard (hardware stats and the names of running apps). If that matters, narrow `allow` in `config.json`.
 - Plain HTTP. That is fine on a home network or inside a VPN tunnel. Use a reverse proxy with HTTPS and authentication if you expose it any further.
 - The service runs as LocalSystem because reading CPU and motherboard sensors needs it. Interactive users can start and stop it; only administrators can install, change or remove it.

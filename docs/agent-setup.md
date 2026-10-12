@@ -47,7 +47,8 @@ Then tell the user briefly what will and will not work on their hardware:
    d. Through a reverse proxy on the internet. Possible, but needs a login in front of it because hwcast has none.
 3. **PawnIO sensor driver.** CPU temperature and motherboard sensors need the free, signed PawnIO driver (https://pawnio.eu). Install it? Without it, load, memory, GPUs and processes still work.
 4. **Install folder.** Default is `C:\Program Files\hwcast`.
-5. **Optional:** have they placed any thermistor probes on the motherboard's temperature headers, or want to rename sensors? This can also be done later.
+5. **AI agents (MCP).** hwcast has a built-in, read-only MCP server so agents can read temperatures, find a free GPU or wait for a job to finish. Connect it to you (this agent) now? Any other agents on this PC, or on other machines?
+6. **Optional:** have they placed any thermistor probes on the motherboard's temperature headers, or want to rename sensors? This can also be done later.
 
 ## Step 3: download and verify
 
@@ -100,6 +101,15 @@ Report what is working, then give them the dashboard addresses that `hwcast stat
 
 Offer to open the dashboard now with `hwcast open`.
 
+If they want MCP (question 5 in step 2), register it with your own client, then call `get_summary` to show it works:
+
+* Claude Code: `claude mcp add --scope user hwcast -- hwcast mcp`
+* Codex CLI: `codex mcp add hwcast -- hwcast mcp`
+* Clients with an `mcpServers` JSON config: command `C:\Program Files\hwcast\hwcast.exe` (or their install folder), args `["mcp"]`
+* Agents on another machine: HTTP transport, URL `http://<this PC's address from hwcast status>:<port>/mcp`
+
+The full list of clients and tools is in https://github.com/ShreyamMaity/hwcast/blob/main/docs/mcp.md. Most clients only load new MCP servers in a new session, so tell the user to restart you if the tools do not show up yet.
+
 ## Step 6 (optional): name sensors and probes
 
 `hwcast --once` (run in an admin terminal) prints every sensor with its ID, for example `it8696e.t5`. Help the user identify which channel is which (for a probe, ask them to hold it between two fingers for 20 seconds and watch which value rises). Then edit `config.json` in the install folder:
@@ -120,6 +130,7 @@ Keep the existing `bind` value. Save it as UTF-8 and run `hwcast restart`.
 | Command | Does |
 |---|---|
 | `hwcast status` | State, sensor driver, dashboard addresses |
+| `hwcast mcp` | MCP server for AI agents on stdio |
 | `hwcast open` | Opens the dashboard |
 | `hwcast stop` / `hwcast start` | Stops or starts the service (no admin needed) |
 | `hwcast uninstall` | Removes everything (admin prompt). Also in Settings > Apps |
