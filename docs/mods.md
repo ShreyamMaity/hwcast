@@ -28,9 +28,9 @@ Every snapshot carries `"api": 1`. Fields may be added at any time without chang
 | `cpu.name` | CPU model |
 | `cpu.load` | Total CPU load, percent |
 | `cpu.cores[]` | Per logical core load, percent |
-| `cpu.tctl` | CPU control temperature, degrees C (AMD; `null` when unavailable) |
+| `cpu.tctl` | CPU temperature, degrees C: Tctl on AMD, package temperature on Intel (`null` when unavailable) |
 | `cpu.ccds[]` | Per CCD temperature, degrees C (AMD) |
-| `cpu.power_w` | Package power, watts (AMD; may be `null`) |
+| `cpu.power_w` | Package power, watts (AMD and Intel; may be `null`) |
 | `mem.used_gb`, `mem.total_gb` | Physical RAM |
 | `mem.commit_used_gb`, `mem.commit_total_gb` | Commit charge |
 | `mem.pagefile_used_gb`, `mem.pagefile_size_gb`, `mem.pagefile_peak_gb` | Page file |

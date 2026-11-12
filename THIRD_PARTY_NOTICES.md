@@ -2,9 +2,9 @@
 
 ## PawnIO modules (embedded in hwcast.exe)
 
-`hwcast.exe` embeds two unmodified, signed modules from
+`hwcast.exe` embeds three unmodified, signed modules from
 [PawnIO.Modules](https://github.com/namazso/PawnIO.Modules) release 0.2.11:
-`LpcIO.bin` and `AMDFamily17.bin`. They are licensed under the GNU Lesser
+`LpcIO.bin`, `AMDFamily17.bin` and `IntelMSR.bin`. They are licensed under the GNU Lesser
 General Public License v2.1; the full text is in
 `LICENSES/PawnIO.Modules-LGPL-2.1.txt`. Their source code is available at
 https://github.com/namazso/PawnIO.Modules. They are loaded at runtime into the

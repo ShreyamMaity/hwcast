@@ -66,7 +66,7 @@ Other clients: use their "HTTP" or "streamable HTTP" server type with the same U
 | Tool | Returns |
 |---|---|
 | `get_summary` | One compact reading of the whole PC: CPU temperature, load and power; every GPU's temperature, load, VRAM, power and fan; RAM; the busiest apps. Agents should start here |
-| `get_cpu` | CPU model, Tctl and per CCD temperature, package power, total load and every logical processor's load |
+| `get_cpu` | CPU model, temperature (Tctl on AMD, package on Intel) and per CCD temperature on AMD, package power, total load and every logical processor's load |
 | `get_gpus` | Every NVIDIA GPU, or one with `index`: temperature, hotspot, memory temperature, core and memory controller load, VRAM used, free and total, power and limit, clock, fan % and RPM |
 | `get_memory` | RAM, commit charge and page file |
 | `get_sensors` | Motherboard temperatures, thermistor probes and fan speeds with their labels and ids |
