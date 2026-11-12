@@ -103,7 +103,7 @@ struct Sampler {
     isa: Option<pawnio::NamedMutex>,
     pci: Option<pawnio::NamedMutex>,
     chips: Vec<superio::Chip>,
-    amd: Option<cpu::AmdSensors>,
+    cpu: Option<cpu::CpuSensors>,
     cores: cpu::CoreLoad,
     procs: sys::Procs,
     gpus: gpu::Gpus,
@@ -130,8 +130,8 @@ impl Sampler {
                 Vec::new()
             }
         };
-        let amd = match cpu::AmdSensors::new() {
-            Ok(a) => Some(a),
+        let cpu = match cpu::CpuSensors::new() {
+            Ok(c) => Some(c),
             Err(e) => {
                 notes.push(e);
                 None
@@ -153,7 +153,7 @@ impl Sampler {
             isa,
             pci,
             chips,
-            amd,
+            cpu,
             cores: cpu::CoreLoad::new(),
             procs: sys::Procs::new(),
             gpus: gpu::Gpus::new(),
@@ -176,8 +176,8 @@ impl Sampler {
     fn prime(&mut self) {
         self.cores.sample();
         self.procs.sample();
-        if let (Some(a), Some(p)) = (&mut self.amd, &self.pci) {
-            a.read(p);
+        if let Some(c) = &mut self.cpu {
+            c.read(self.pci.as_ref());
         }
     }
 
@@ -186,10 +186,8 @@ impl Sampler {
         self.tick += 1;
         let cores = self.cores.sample();
         let load = if cores.is_empty() { 0.0 } else { cores.iter().sum::<f32>() / cores.len() as f32 };
-        let amd = match (&mut self.amd, &self.pci) {
-            (Some(a), Some(p)) => Some(a.read(p)),
-            _ => None,
-        };
+        let pci = self.pci.as_ref();
+        let cpu_r = self.cpu.as_mut().map(|c| c.read(pci));
         let mem = sys::memory();
         let gpus = self.gpus.read();
 
@@ -260,9 +258,9 @@ impl Sampler {
             "t": SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0),
             "cpu": {
                 "name": self.cpu_name,
-                "tctl": amd.as_ref().and_then(|a| a.tctl),
-                "ccds": amd.as_ref().map(|a| a.ccds.clone()).unwrap_or_default(),
-                "power_w": amd.as_ref().and_then(|a| a.package_w),
+                "tctl": cpu_r.as_ref().and_then(|a| a.tctl),
+                "ccds": cpu_r.as_ref().map(|a| a.ccds.clone()).unwrap_or_default(),
+                "power_w": cpu_r.as_ref().and_then(|a| a.package_w),
                 "load": load,
                 "cores": cores.iter().map(|c| (c * 10.0).round() / 10.0).collect::<Vec<_>>(),
             },
