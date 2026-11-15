@@ -105,6 +105,15 @@ impl CpuSensors {
         }
     }
 
+    /// The temperature the CPU throttles at, when it reports one (Intel).
+    /// `None` on AMD, where Tctl is already scaled so fixed limits fit.
+    pub fn tj_max(&self) -> Option<f32> {
+        match self {
+            CpuSensors::Amd(_) => None,
+            CpuSensors::Intel(i) => Some(i.tj_max),
+        }
+    }
+
     /// `pci` is the cross-tool PCI bus lock; only the AMD SMN reads need it.
     pub fn read(&mut self, pci: Option<&NamedMutex>) -> CpuReading {
         match self {

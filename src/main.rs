@@ -261,6 +261,7 @@ impl Sampler {
                 "tctl": cpu_r.as_ref().and_then(|a| a.tctl),
                 "ccds": cpu_r.as_ref().map(|a| a.ccds.clone()).unwrap_or_default(),
                 "power_w": cpu_r.as_ref().and_then(|a| a.package_w),
+                "tj_max": self.cpu.as_ref().and_then(|c| c.tj_max()),
                 "load": load,
                 "cores": cores.iter().map(|c| (c * 10.0).round() / 10.0).collect::<Vec<_>>(),
             },
