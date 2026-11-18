@@ -119,7 +119,7 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 
 ## What it shows
 
-- **CPU**: temperature (Tctl), per CCD temperatures, package power, total and per thread load, 5 minute graph
+- **CPU**: temperature (Tctl on AMD, package on Intel), per CCD temperatures (AMD), package power, total and per thread load, 5 minute graph
 - **GPUs** (NVIDIA): temperature, hotspot and memory temperature where the card reports them, load, power vs limit, VRAM, clock and fan speed for every card, each with its own graph
 - **Memory**: RAM used and free, page file in use and peak, commit charge, graph of both
 - **Board**: motherboard temperatures, fan speeds, and external thermistor probes as large tiles
@@ -135,14 +135,14 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 
 | Part | Supported |
 |---|---|
-| CPU temperature and power | AMD Ryzen (Zen 1 to Zen 5) |
+| CPU temperature and power | AMD Ryzen (Zen 1 to Zen 5); Intel Core with a package thermal sensor (Sandy Bridge and later, package temperature only) |
 | CPU load, RAM, page file, processes | Any |
 | GPU | NVIDIA, any number of cards (through NVML, ships with the driver) |
 | Motherboard sensors | ITE Super I/O chips: IT8613E, IT8628E, IT8686E, IT8688E, IT8689E, IT8696E, IT87952E, IT8792E (most Gigabyte boards) |
 
 Board channels on Gigabyte AM5 boards (X870, X870E, B850 with IT8696E) get proper names. Other supported chips show numbered channels ("IT8686E temp 3") that you can rename in `config.json`. Unsupported parts are simply hidden on the dashboard.
 
-Not supported yet: Intel CPU temperatures, AMD and Intel GPUs, Nuvoton Super I/O chips (most ASUS, MSI and ASRock boards). Pull requests welcome.
+Not supported yet: Intel per core temperatures, AMD and Intel GPUs, Nuvoton Super I/O chips (most ASUS, MSI and ASRock boards). Pull requests welcome.
 
 ## Configuration
 

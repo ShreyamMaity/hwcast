@@ -263,7 +263,10 @@ function render(d) {
   const sensors = d.sensors || { temps: [], fans: [] };
   const cpu = d.cpu;
   $('cpuName').textContent = cpu.name.replace('AMD ', '').replace(/ \d+-Core Processor/, '');
-  setTemp($('cpuTemp'), cpu.tctl, 80, 87);
+  // Intel parts run close to TjMax under load by design, so their limits follow
+  // it; AMD reports no TjMax and keeps the fixed Tctl limits.
+  const tj = cpu.tj_max;
+  setTemp($('cpuTemp'), cpu.tctl, tj ? tj - 15 : 80, tj ? tj - 5 : 87);
   $('cpuLoad').innerHTML = `${fmt(cpu.load)}<small>%</small>`;
   $('cpuPow').textContent = cpu.power_w == null ? '--' : `${fmt(cpu.power_w)} W`;
   $('cpuCcd').textContent = cpu.ccds.length ? cpu.ccds.map(v => fmt(v) + '°').join(' ') : '--';
@@ -278,7 +281,7 @@ function render(d) {
   push('cpuLoad', cpu.load); push('cpuTemp', cpu.tctl);
   draw('cCpu', [
     { data: hist.cpuLoad, min: 0, max: 100, color: '#5aa9ff', fill: true },
-    { data: hist.cpuTemp, min: 30, max: 95, color: '#ffffff', width: 1.3 },
+    { data: hist.cpuTemp, min: 30, max: Math.max(95, tj || 0), color: '#ffffff', width: 1.3 },
   ]);
 
   renderGpus(d.gpus || []);

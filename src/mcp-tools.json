@@ -8,7 +8,7 @@
   {
     "name": "get_cpu",
     "title": "CPU detail",
-    "description": "CPU model, temperature (Tctl and per CCD on AMD), package power, total load and the load of every logical processor.",
+    "description": "CPU model, temperature (Tctl and per CCD on AMD, package temperature on Intel), package power, total load and the load of every logical processor.",
     "properties": {}
   },
   {

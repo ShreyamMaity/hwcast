@@ -22,6 +22,7 @@ const FN_NAME_LENGTH: usize = 32;
 
 pub static LPCIO: &[u8] = include_bytes!("../vendor/mods/LpcIO.bin");
 pub static AMD17: &[u8] = include_bytes!("../vendor/mods/AMDFamily17.bin");
+pub static INTEL_MSR: &[u8] = include_bytes!("../vendor/mods/IntelMSR.bin");
 
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()

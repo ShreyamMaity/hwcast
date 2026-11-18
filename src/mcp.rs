@@ -226,6 +226,7 @@ fn cpu(s: &Value) -> Value {
     json!({
         "name": c["name"],
         "temp_c": r(f(&c["tctl"]), 1),
+        "tj_max_c": r(f(&c["tj_max"]), 0),
         "ccd_temps_c": c["ccds"].as_array().map(|a| a.iter().map(|v| r(f(v), 1)).collect::<Vec<_>>()),
         "power_w": r(f(&c["power_w"]), 1),
         "load_pct": r(f(&c["load"]), 1),
