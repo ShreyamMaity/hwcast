@@ -13,12 +13,14 @@ pub struct Gpus {
     nvml: Option<Nvml>,
     nvapi: Option<NvApi>,
     adl: Option<Adl>,
+    /// Why the AMD path found nothing, when the Radeon driver is present.
+    pub amd_note: Option<String>,
     retry_at: Instant,
 }
 
 impl Gpus {
     pub fn new() -> Self {
-        Gpus { nvml: None, nvapi: None, adl: None, retry_at: Instant::now() }
+        Gpus { nvml: None, nvapi: None, adl: None, amd_note: None, retry_at: Instant::now() }
     }
 
     /// Unload NVML, NVAPI, ADL (and the driver DLLs they pull in) while nobody is watching.
@@ -36,7 +38,10 @@ impl Gpus {
                 self.nvapi = self.nvml.as_ref().and_then(|_| NvApi::load());
             }
             if self.adl.is_none() {
-                self.adl = Adl::load(std::env::var_os("HWCAST_AMD_IGPU").is_some());
+                match Adl::load(std::env::var_os("HWCAST_AMD_IGPU").is_some()) {
+                    Ok(a) => (self.adl, self.amd_note) = (Some(a), None),
+                    Err(note) => self.amd_note = note,
+                }
             }
             self.retry_at = Instant::now() + Duration::from_secs(60);
         }
