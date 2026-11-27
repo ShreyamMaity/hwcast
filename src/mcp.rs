@@ -11,7 +11,7 @@ use std::time::Instant;
 
 const PROTOCOLS: [&str; 4] = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS: &str = "Read-only live hardware telemetry from a Windows PC running hwcast: CPU, NVIDIA GPUs, memory, \
+const INSTRUCTIONS: &str = "Read-only live hardware telemetry from a Windows PC running hwcast: CPU, NVIDIA and AMD Radeon GPUs, memory, \
 motherboard sensors and top processes. Start with get_summary. Before putting work on a GPU, call check_gpu_free. \
 Use sample for averages over a few seconds instead of a single reading, and wait_for to wait until a job finishes \
 or a part cools down. Metric names for sample and wait_for come from list_metrics.";
@@ -238,7 +238,7 @@ fn cpu(s: &Value) -> Value {
 fn gpus(s: &Value, args: &Value) -> Result<Value, String> {
     let all = s["gpus"].as_array().cloned().unwrap_or_default();
     if all.is_empty() {
-        return Ok(json!({"gpus": [], "note": "no NVIDIA GPU found"}));
+        return Ok(json!({"gpus": [], "note": "no supported GPU found (NVIDIA, or AMD Radeon RX 5000 or newer)"}));
     }
     match args["index"].as_u64() {
         Some(i) => all
@@ -463,7 +463,7 @@ fn check_gpu_free(args: &Value, src: &dyn Source) -> Result<Value, String> {
     let now = src.now().ok_or("hwcast has no reading yet; try again in a few seconds")?;
     let gpus: Vec<(u64, Value)> = now["gpus"].as_array().into_iter().flatten().map(|g| (g["index"].as_u64().unwrap_or(0), g["name"].clone())).collect();
     if gpus.is_empty() {
-        return Ok(json!({"free_gpus": [], "gpus": [], "note": "no NVIDIA GPU found"}));
+        return Ok(json!({"free_gpus": [], "gpus": [], "note": "no supported GPU found (NVIDIA, or AMD Radeon RX 5000 or newer)"}));
     }
     let need = args["need_vram_gb"].as_f64().unwrap_or(0.0).max(0.0);
     let max_load = args["max_load_pct"].as_f64().unwrap_or(10.0);

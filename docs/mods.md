@@ -35,11 +35,12 @@ Every snapshot carries `"api": 1`. Fields may be added at any time without chang
 | `mem.used_gb`, `mem.total_gb` | Physical RAM |
 | `mem.commit_used_gb`, `mem.commit_total_gb` | Commit charge |
 | `mem.pagefile_used_gb`, `mem.pagefile_size_gb`, `mem.pagefile_peak_gb` | Page file |
-| `gpus[]` | One entry per NVIDIA GPU, empty when there is none |
-| `gpus[].index` | NVML index, same as `nvidia-smi` |
+| `gpus[]` | One entry per GPU, empty when there is none: NVIDIA cards first, then AMD Radeon cards |
+| `gpus[].index` | NVIDIA: NVML index, same as `nvidia-smi`. AMD cards are numbered after the NVIDIA ones |
+| `gpus[].vendor` | `"nvidia"` or `"amd"` |
 | `gpus[].name`, `temp`, `util`, `mem_util` | Model, degrees C, core load percent, memory controller load percent |
 | `gpus[].hotspot`, `mem_temp` | Hotspot and memory junction temperature, degrees C (`null` when the card does not report them, for example GDDR7 memory) |
-| `gpus[].power_w`, `power_limit_w`, `clock_mhz` | Power, limit, core clock |
+| `gpus[].power_w`, `power_limit_w`, `clock_mhz` | Power, limit, core clock (AMD: board power, no limit, so `power_limit_w` is `null`) |
 | `gpus[].fan_pct`, `fan_rpm` | Fan speed in percent and RPM, the fastest fan channel on the card |
 | `gpus[].vram_used_gb`, `vram_total_gb` | Video memory |
 | `sensors.temps[]` | Board temperatures: `id`, `label`, `v` (degrees C or `null`), `probe` (thermistor header), `socket` (CPU socket sensor) |

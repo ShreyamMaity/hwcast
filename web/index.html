@@ -197,7 +197,7 @@ function renderGpus(gs) {
     $(`gpu${i}Name`).textContent = g.name;
     setTemp($(`gpu${i}Temp`), g.temp, 80, 87);
     $(`gpu${i}Load`).innerHTML = `${fmt(g.util)}<small>%</small>`;
-    $(`gpu${i}Pow`).textContent = g.power_w == null ? '--' : `${fmt(g.power_w)} / ${fmt(g.power_limit_w)} W`;
+    $(`gpu${i}Pow`).textContent = g.power_w == null ? '--' : g.power_limit_w == null ? `${fmt(g.power_w)} W` : `${fmt(g.power_w)} / ${fmt(g.power_limit_w)} W`;
     $(`gpu${i}Vram`).textContent = `${fmt(g.vram_used_gb, 1)} / ${fmt(g.vram_total_gb)} GB`;
     $(`gpu${i}Clk`).textContent = g.clock_mhz == null ? '--' : `${g.clock_mhz} MHz`;
     $(`gpu${i}Fan`).textContent = g.fan_pct == null ? '--' : g.fan_rpm ? `${g.fan_pct}%, ${fmt(g.fan_rpm)} rpm` : `${g.fan_pct}%`;

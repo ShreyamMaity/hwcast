@@ -1,6 +1,8 @@
 //! NVIDIA GPUs through NVML (ships with the driver). Handles more than one card.
 //! Hotspot and memory junction temperatures come from NVAPI when available (see nvapi.rs).
+//! AMD Radeon GPUs come from ADL (see adl.rs) and are numbered after the NVIDIA ones.
 
+use crate::adl::Adl;
 use crate::nvapi::NvApi;
 use nvml_wrapper::enum_wrappers::device::{Clock, TemperatureSensor};
 use nvml_wrapper::Nvml;
@@ -10,27 +12,42 @@ use std::time::{Duration, Instant};
 pub struct Gpus {
     nvml: Option<Nvml>,
     nvapi: Option<NvApi>,
+    adl: Option<Adl>,
     retry_at: Instant,
 }
 
 impl Gpus {
     pub fn new() -> Self {
-        Gpus { nvml: None, nvapi: None, retry_at: Instant::now() }
+        Gpus { nvml: None, nvapi: None, adl: None, retry_at: Instant::now() }
     }
 
-    /// Unload NVML and NVAPI (and the driver DLLs they pull in) while nobody is watching.
+    /// Unload NVML, NVAPI, ADL (and the driver DLLs they pull in) while nobody is watching.
     pub fn release(&mut self) {
         self.nvml = None;
         self.nvapi = None;
+        self.adl = None;
         self.retry_at = Instant::now();
     }
 
     pub fn read(&mut self) -> Vec<Value> {
-        if self.nvml.is_none() && Instant::now() >= self.retry_at {
-            self.nvml = Nvml::init().ok();
-            self.nvapi = self.nvml.as_ref().and_then(|_| NvApi::load());
+        if (self.nvml.is_none() || self.adl.is_none()) && Instant::now() >= self.retry_at {
+            if self.nvml.is_none() {
+                self.nvml = Nvml::init().ok();
+                self.nvapi = self.nvml.as_ref().and_then(|_| NvApi::load());
+            }
+            if self.adl.is_none() {
+                self.adl = Adl::load(std::env::var_os("HWCAST_AMD_IGPU").is_some());
+            }
             self.retry_at = Instant::now() + Duration::from_secs(60);
         }
+        let mut out = self.nvidia();
+        if let Some(adl) = &self.adl {
+            out.extend(adl.read(out.len()));
+        }
+        out
+    }
+
+    fn nvidia(&self) -> Vec<Value> {
         let Some(nvml) = &self.nvml else { return Vec::new() };
         let n = nvml.device_count().unwrap_or(0);
         (0..n)
@@ -49,6 +66,7 @@ impl Gpus {
                 };
                 json!({
                     "index": i,
+                    "vendor": "nvidia",
                     "name": d.name().unwrap_or_default().replace("NVIDIA GeForce ", ""),
                     "temp": d.temperature(TemperatureSensor::Gpu).ok(),
                     "hotspot": extra.hotspot,

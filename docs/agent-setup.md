@@ -4,7 +4,7 @@ This file is written for an AI coding agent (Claude Code, Codex, Antigravity, Gr
 
 ## What hwcast is
 
-hwcast is a small open-source Windows program (one Rust exe, about 600 KB) that runs as a background Windows service and serves a live hardware dashboard to any browser on the local network: CPU temperature and load, every NVIDIA GPU, RAM and page file, motherboard temperatures and fans, and the apps using the most resources. It reads sensors only while a dashboard is open, so it costs close to nothing otherwise. Source and releases: https://github.com/ShreyamMaity/hwcast
+hwcast is a small open-source Windows program (one Rust exe, about 600 KB) that runs as a background Windows service and serves a live hardware dashboard to any browser on the local network: CPU temperature and load, every NVIDIA and AMD Radeon GPU, RAM and page file, motherboard temperatures and fans, and the apps using the most resources. It reads sensors only while a dashboard is open, so it costs close to nothing otherwise. Source and releases: https://github.com/ShreyamMaity/hwcast
 
 ## Ground rules
 
@@ -26,14 +26,14 @@ Get-Service PawnIO -ErrorAction SilentlyContinue | Select-Object Status
 (Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\BIOS').BaseBoardManufacturer
 (Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\BIOS').BaseBoardProduct
 (Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0').ProcessorNameString
-nvidia-smi --query-gpu=index,name --format=csv,noheader 2>$null
+(Get-CimInstance Win32_VideoController).Name
 ```
 
 Then tell the user briefly what will and will not work on their hardware:
 
 * Windows 10 or 11 on x64 is required. Stop and explain if it is anything else.
-* CPU temperature and power: AMD Ryzen only. Intel CPUs still get load, clocks are not shown.
-* GPUs: NVIDIA only (every card gets its own panel). AMD and Intel GPUs are not shown yet.
+* CPU temperature and power: AMD Ryzen, and Intel Core (package temperature and power). Other CPUs still get load.
+* GPUs: NVIDIA, and AMD Radeon RX 5000 or newer (every card gets its own panel). Intel GPUs and older Radeon cards are not shown yet.
 * Motherboard temperatures and fans: boards with ITE Super I/O chips, which is most Gigabyte boards. Gigabyte AM5 boards (X870, X870E, B850) get named sensors; other ITE boards get numbered ones. ASUS, MSI and ASRock boards mostly use Nuvoton chips, which are not supported yet, so the board panel will simply be hidden.
 * If hwcast is already installed, offer to update it (same steps, the config is kept) or to change settings.
 

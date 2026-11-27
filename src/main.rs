@@ -8,6 +8,7 @@
 //!   hwcast mcp              MCP server on stdio for AI agents (bridges to the service)
 //!   hwcast --once           print one full JSON snapshot and exit
 
+mod adl;
 mod board;
 mod cpu;
 mod gpu;

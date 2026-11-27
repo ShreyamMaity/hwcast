@@ -11,7 +11,7 @@
 [![Live demo](assets/badges/demo.svg)](https://shreyammaity.github.io/hwcast/demo/)
 [![Setup with an agent](assets/badges/agent.svg)](https://shreyammaity.github.io/hwcast/setup/)
 
-A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second. It also feeds the same data to AI agents through a built-in MCP server and to mods like small displays.
+A tiny Windows service that serves a live hardware dashboard for your PC to any browser on your network: CPU, every NVIDIA and AMD Radeon GPU, RAM, page file, motherboard temperatures, fans and the apps using the most resources, updated every second. It also feeds the same data to AI agents through a built-in MCP server and to mods like small displays.
 
 Nothing to install on the viewing device. Open the address in any browser on your local network (a laptop, a spare monitor, a tablet, a phone) and leave it open.
 
@@ -27,7 +27,7 @@ The same live data goes beyond the browser:
 ## Features
 
 - **One exe, one double-click**: installs itself as a Windows service that starts at boot. No installer framework, no runtime.
-- **Every GPU detected automatically**: each NVIDIA card gets its own panel and graph, numbered the same way as `nvidia-smi`.
+- **Every GPU detected automatically**: each NVIDIA and AMD Radeon card gets its own panel and graph, NVIDIA cards numbered the same way as `nvidia-smi`.
 - **Real sensors**: CPU temperature and package power, motherboard temperatures, fans and your own thermistor probes, read directly through the signed PawnIO driver.
 - **Costs nothing when nobody is watching**: sensors are only read while a dashboard is open. 0% CPU and about 0.2 MB of RAM otherwise.
 - **Local network by default**: any device at home can open it, nothing is exposed to the internet. Works through Tailscale or any VPN for access from elsewhere.
@@ -120,7 +120,7 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 ## What it shows
 
 - **CPU**: temperature (Tctl on AMD, package on Intel), per CCD temperatures (AMD), package power, total and per thread load, 5 minute graph
-- **GPUs** (NVIDIA): temperature, hotspot and memory temperature where the card reports them, load, power vs limit, VRAM, clock and fan speed for every card, each with its own graph
+- **GPUs** (NVIDIA and AMD Radeon): temperature, hotspot and memory temperature where the card reports them, load, power (vs limit on NVIDIA), VRAM, clock and fan speed for every card, each with its own graph
 - **Memory**: RAM used and free, page file in use and peak, commit charge, graph of both
 - **Board**: motherboard temperatures, fan speeds, and external thermistor probes as large tiles
 - **Top processes**: by CPU and by memory, grouped by app the way Task Manager groups them
@@ -137,12 +137,12 @@ The connection is encrypted by Tailscale end to end. Anyone you share your tailn
 |---|---|
 | CPU temperature and power | AMD Ryzen (Zen 1 to Zen 5); Intel Core with a package thermal sensor (Sandy Bridge and later, package temperature only) |
 | CPU load, RAM, page file, processes | Any |
-| GPU | NVIDIA, any number of cards (through NVML, ships with the driver) |
+| GPU | NVIDIA, any number of cards (through NVML, ships with the driver); AMD Radeon RX 5000 and newer (through ADL, ships with the Radeon driver) |
 | Motherboard sensors | ITE Super I/O chips: IT8613E, IT8628E, IT8686E, IT8688E, IT8689E, IT8696E, IT87952E, IT8792E (most Gigabyte boards) |
 
 Board channels on Gigabyte AM5 boards (X870, X870E, B850 with IT8696E) get proper names. Other supported chips show numbered channels ("IT8686E temp 3") that you can rename in `config.json`. Unsupported parts are simply hidden on the dashboard.
 
-Not supported yet: Intel per core temperatures, AMD and Intel GPUs, Nuvoton Super I/O chips (most ASUS, MSI and ASRock boards). Pull requests welcome.
+Not supported yet: Intel per core temperatures, Intel GPUs, AMD GPUs older than RX 5000, Nuvoton Super I/O chips (most ASUS, MSI and ASRock boards). Pull requests welcome.
 
 ## Configuration
 
@@ -173,7 +173,7 @@ sensors (PawnIO, NVML, Windows)  >  hwcast service  >  Server-Sent Events over y
 ```
 
 - The service serves one HTML page and a `/events` stream. The browser keeps that stream open and receives one small JSON update per second, then draws everything locally. History lives in the browser, nothing is written to disk.
-- Sensors are read only while at least one viewer is connected. When the last one leaves, the NVIDIA library is unloaded and memory is handed back to Windows.
+- Sensors are read only while at least one viewer is connected. When the last one leaves, the GPU libraries are unloaded and memory is handed back to Windows.
 - CPU and board sensors are read through PawnIO, a signed driver that runs small sandboxed modules for port and register access. hwcast only reads sensors and never writes fan or voltage settings. It holds the same bus locks HWiNFO, LibreHardwareMonitor and vendor tools use, so they can run at the same time.
 - No WMI, no polling of other tools, no telemetry of its own.
 
@@ -231,7 +231,7 @@ Built one? Open a pull request that adds it to this table.
 |-------|-----------|
 | Language | [Rust](https://www.rust-lang.org/) (2021 edition), single static exe |
 | Sensor access | [PawnIO](https://pawnio.eu) signed driver with [PawnIO.Modules](https://github.com/namazso/PawnIO.Modules) |
-| GPU | [NVML](https://developer.nvidia.com/management-library-nvml) through [nvml-wrapper](https://crates.io/crates/nvml-wrapper) |
+| GPU | [NVML](https://developer.nvidia.com/management-library-nvml) through [nvml-wrapper](https://crates.io/crates/nvml-wrapper); AMD [ADL](https://github.com/GPUOpen-LibrariesAndSDKs/display-library) |
 | Windows APIs | [windows-sys](https://crates.io/crates/windows-sys), [windows-service](https://crates.io/crates/windows-service) |
 | Web server | Hand-written HTTP + Server-Sent Events on `std::net` (no async runtime) |
 | UI | Vanilla HTML/CSS/JS and canvas, embedded in the exe (no build step) |
