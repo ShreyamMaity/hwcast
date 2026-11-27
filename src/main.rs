@@ -276,7 +276,7 @@ impl Sampler {
             "sensors": {"temps": temps, "fans": fans},
             "procs": self.last_procs,
             "self": {"rss_mb": rss_mb, "cpu_pct": self_pct, "sample_ms": t0.elapsed().as_secs_f64() * 1000.0},
-            "notes": self.notes,
+            "notes": self.notes.iter().chain(&self.gpus.amd_note).collect::<Vec<_>>(),
         })
     }
 }

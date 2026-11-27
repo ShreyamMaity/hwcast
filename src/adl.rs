@@ -22,6 +22,8 @@ type VramUsage = unsafe extern "C" fn(Ctx, i32, *mut i32) -> i32;
 // ADL reports AMD's PCI vendor 0x1002 as the decimal number 1002 (0x3EA).
 const AMD_VENDOR: [i32; 2] = [1002, 0x1002];
 const ASIC_DISCRETE: i32 = 1 << 0;
+// ADL2_Main_Control_Create: 1 = only adapters with a display attached.
+const ENUM_CONNECTED: i32 = 1;
 
 // ADLSensorType indices into the PMLog table (adl_defines.h).
 const GFXCLK: usize = 1;
@@ -102,57 +104,73 @@ fn cstr(b: &[u8]) -> String {
 impl Adl {
     /// `integrated` also lists APU graphics (off by default: on a desktop it mostly
     /// repeats the CPU temperature and clutters the dashboard).
-    pub fn load(integrated: bool) -> Option<Self> {
+    /// `Err(None)`: no Radeon driver on this PC, nothing worth reporting.
+    /// `Err(Some(why))`: the driver is there but no card could be read; `why` goes into
+    /// the snapshot's `notes` so a missing GPU is never silent.
+    pub fn load(integrated: bool) -> Result<Self, Option<String>> {
         unsafe {
             let dll = LoadLibraryA(b"atiadlxx.dll\0".as_ptr());
             if dll.is_null() {
-                return None;
+                return Err(None);
             }
-            let adl = Self::init(dll, integrated);
-            if adl.is_none() {
+            // An empty error means nothing went wrong (e.g. only integrated graphics).
+            let adl = Self::init(dll, integrated).map_err(|e| (!e.is_empty()).then(|| format!("AMD GPU: {e}")));
+            if adl.is_err() {
                 FreeLibrary(dll);
             }
             adl
         }
     }
 
-    unsafe fn init(dll: HMODULE, integrated: bool) -> Option<Self> {
+    unsafe fn init(dll: HMODULE, integrated: bool) -> Result<Self, String> {
         macro_rules! sym {
             ($name:literal, $t:ty) => {
                 GetProcAddress(dll, concat!($name, "\0").as_ptr()).map(|p| std::mem::transmute::<_, $t>(p))
             };
         }
-        let create = sym!("ADL2_Main_Control_Create", Create)?;
-        let destroy = sym!("ADL2_Main_Control_Destroy", Destroy)?;
-        let num = sym!("ADL2_Adapter_NumberOfAdapters_Get", NumAdapters)?;
-        let info = sym!("ADL2_Adapter_AdapterInfo_Get", AdapterInfoGet)?;
-        let pmlog = sym!("ADL2_New_QueryPMLogData_Get", PmLogGet)?;
+        macro_rules! need {
+            ($name:literal, $t:ty) => {
+                sym!($name, $t).ok_or(concat!("driver has no ", $name))?
+            };
+        }
+        let create = need!("ADL2_Main_Control_Create", Create);
+        let destroy = need!("ADL2_Main_Control_Destroy", Destroy);
+        let num = need!("ADL2_Adapter_NumberOfAdapters_Get", NumAdapters);
+        let info = need!("ADL2_Adapter_AdapterInfo_Get", AdapterInfoGet);
+        let pmlog = need!("ADL2_New_QueryPMLogData_Get", PmLogGet);
         let asic = sym!("ADL2_Adapter_ASICFamilyType_Get", AsicFamily);
         let meminfo = sym!("ADL2_Adapter_MemoryInfo_Get", MemInfoGet);
         let vram = sym!("ADL2_Adapter_DedicatedVRAMUsage_Get", VramUsage);
 
         let mut ctx: Ctx = std::ptr::null_mut();
-        if create(adl_malloc, 1, &mut ctx) != 0 || ctx.is_null() {
-            return None;
+        let rc = create(adl_malloc, ENUM_CONNECTED, &mut ctx);
+        if rc != 0 || ctx.is_null() {
+            return Err(format!("ADL init failed ({rc})"));
         }
         let mut adl = Adl { dll, ctx, destroy, pmlog, vram, cards: Vec::new() };
         let mut n = 0;
-        if num(ctx, &mut n) != 0 || n <= 0 {
-            return None; // Drop destroys the context and frees the DLL.
+        let rc = num(ctx, &mut n);
+        if rc != 0 || n <= 0 {
+            // Drop destroys the context and frees the DLL.
+            return Err(format!("ADL lists no adapters ({rc}, {n})"));
         }
         let mut list: Vec<AdapterInfo> = (0..n).map(|_| std::mem::zeroed()).collect();
         for a in list.iter_mut() {
             a.size = std::mem::size_of::<AdapterInfo>() as i32;
         }
-        if info(ctx, list.as_mut_ptr(), (list.len() * std::mem::size_of::<AdapterInfo>()) as i32) != 0 {
-            return None;
+        let rc = info(ctx, list.as_mut_ptr(), (list.len() * std::mem::size_of::<AdapterInfo>()) as i32);
+        if rc != 0 {
+            return Err(format!("ADL adapter info failed ({rc})"));
         }
         // ADL lists one adapter per display output; keep one per physical card (PCI bus).
         let mut seen = Vec::new();
+        let mut why = Vec::new();
         for a in &list {
-            if !AMD_VENDOR.contains(&a.vendor) || a.present == 0 || seen.contains(&a.bus) {
+            if !AMD_VENDOR.contains(&a.vendor) || seen.contains(&a.bus) {
                 continue;
             }
+            // `present` means "has a display in this session", so it is 0 for every card
+            // when hwcast runs as a service in session 0. The sensor read below decides.
             if let Some(asic) = asic {
                 let (mut types, mut valid) = (0, 0);
                 if asic(ctx, a.index, &mut types, &mut valid) == 0 && valid & ASIC_DISCRETE != 0 && types & ASIC_DISCRETE == 0 && !integrated {
@@ -163,7 +181,9 @@ impl Adl {
             // report Overdrive as unsupported yet still serve it, so the read itself decides.
             let mut log: PmLog = std::mem::zeroed();
             log.size = std::mem::size_of::<PmLog>() as i32;
-            if pmlog(ctx, a.index, &mut log) != 0 {
+            let rc = pmlog(ctx, a.index, &mut log);
+            if rc != 0 {
+                why.push(format!("{} sensor read failed ({rc})", cstr(&a.name)));
                 continue;
             }
             seen.push(a.bus);
@@ -175,9 +195,10 @@ impl Adl {
             adl.cards.push(Card { adapter: a.index, name, vram_total_gb });
         }
         if adl.cards.is_empty() {
-            return None;
+            why.dedup();
+            return Err(why.join("; "));
         }
-        Some(adl)
+        Ok(adl)
     }
 
     /// One JSON entry per card, in the same shape as the NVIDIA ones. `first_index`
