@@ -14,7 +14,7 @@
   {
     "name": "get_gpus",
     "title": "GPU detail",
-    "description": "Every NVIDIA GPU (index as nvidia-smi counts them): temperature, hotspot and memory temperature, core and memory-controller load, VRAM used/free/total, power and limit, clock, fan.",
+    "description": "Every GPU: NVIDIA (index as nvidia-smi counts them) then AMD Radeon: temperature, hotspot and memory temperature, core and memory-controller load, VRAM used/free/total, power and limit, clock, fan.",
     "properties": {
       "index": {
         "description": "Only this GPU. Omit for all.",
